@@ -17,17 +17,17 @@ class PrescriptionGenerator:
     def __init__(self):
         self.paths = PathConfig()
         self.file_handler = FileHandler()
-    
+
     def generate(self, session: DiagnosisSession) -> Path:
         """
         Generate prescription document from diagnosis session.
 
         Args:
             session: Complete diagnosis session
-        
+
         Returns:
             Path to generated prescription file
-        
+
         Raises:
             FileOperationError: if file generation fails
         """
@@ -36,17 +36,14 @@ class PrescriptionGenerator:
             self.file_handler.safe_delete(self.paths.prescription_file)
             content = self.format_prescription(session)
             file_path = self.paths.prescription_file
-            self.file_handler.safe_write(
-                file_path, 
-                content
-            )
+            self.file_handler.safe_write(file_path, content)
             logger.info(f"Generated prescription: {file_path}")
             return file_path
         except Exception as error:
             logger.error(f"Failed to generate prescription: {error}")
             raise FileOperationError(f"Could not generate prescription: {error}")
-    
-    def format_prescription(self, session: DiagnosisSession) -> str:    
+
+    def format_prescription(self, session: DiagnosisSession) -> str:
         """
         Format prescription's content
 
@@ -66,21 +63,21 @@ class PrescriptionGenerator:
             gender=session.patient.gender,
             initial_complaint=session.initial_complaint,
             conversation=conversation_text,
-            medication=session.medication or "No recommendations generated"
+            medication=session.medication or "No recommendations generated",
         )
-    
+
     def format_conversation(self, session: DiagnosisSession) -> str:
         """Format the conversation for the prescription"""
         if not session.conversation:
             return "No follow-up questions recorded"
-        
+
         lines = []
         for i, turn in enumerate(session.conversation, 1):
             lines.append(f"\nQuestion {i}: {turn.question}")
             lines.append(f"Response: {turn.answer}")
-        
+
         return "\n".join(lines)
-    
+
     def cleanup(self) -> None:
         """Remove any generated prescription files"""
         self.file_handler.safe_delete(self.paths.prescription_file)
@@ -93,16 +90,16 @@ class PrescriptionService:
     Handles prescription generation, storage, and retrieval.
     """
 
-    def __int__(self):
+    def __init__(self):
         self.generator = PrescriptionGenerator()
-    
+
     def create_prescription(self, session: DiagnosisSession) -> Path:
         """
         Create a prescription from completed diagnosis session.
 
         Args:
             session: Completed diagnosis session
-        
+
         Returns:
             Path to prescription file
         """

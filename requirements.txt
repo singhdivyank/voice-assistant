@@ -1,10 +1,9 @@
 python-dotenv==1.0.0
-pydantic=2.0.0
+pydantic==1.10.26
 SpeechRecognition==3.8.1
 PyAudio==0.2.14
 gTTS==2.5.0
-playsound==1.2.2
-googletrans==4.0.0-rc1
+deep-translator==1.11.4
 langchain==0.0.352
 langchain_google_genai==0.0.5
 google_generativeai==0.3.2

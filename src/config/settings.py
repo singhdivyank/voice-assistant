@@ -11,6 +11,7 @@ load_dotenv()
 
 class Language(Enum):
     """Supported languages with their ISO codes"""
+
     ENGLISH = "en"
     BENGALI = "bn"
     GUJRATI = "gu"
@@ -27,15 +28,16 @@ class Language(Enum):
         """Get language enum from string name"""
         mapping = {lang.name.lower(): lang for lang in cls}
         return mapping.get(name.lower(), cls.ENGLISH)
-    
+
     @classmethod
     def choices(cls) -> list[str]:
         """Return list of language names for UI"""
-        return [lang.name.lower() for lang in  cls]
+        return [lang.name.lower() for lang in cls]
 
 
 class Gender(Enum):
     """Patient gender options"""
+
     MALE = "male"
     FEMALE = "female"
     UNDISCLOSED = "Prefer not to disclose"
@@ -46,14 +48,29 @@ class Gender(Enum):
         for gender in cls:
             if gender.value.lower() == value.lower():
                 return gender
-        
+
         return cls.UNDISCLOSED
+
+
+class Platforms(Enum):
+    """Supported Operating Systems"""
+
+    WINDOWS = "Windows"
+    LINUX = "Linux"
+    MAC = "Darwin"
+
+    @classmethod
+    def from_sring(cls, name: str) -> "Platforms":
+        """Get platform enum from string name"""
+        mapping = {lang.name.lower(): lang for lang in cls}
+        return mapping.get(name.lower(), cls.MAC)
 
 
 @dataclass(frozen=True)
 class LLMConfig:
     """Configuration for the LLM model"""
-    model_name = 'jarvis_backend'
+
+    model_name = "jarvis_backend"
     gemini_model: str = "gemini-pro"
     temperature: float = 0.0
     api_key: Optional[str] = field(default_factory=lambda: os.getenv("GOOGLE_API_KEY"))
@@ -66,20 +83,22 @@ class LLMConfig:
 @dataclass(frozen=True)
 class ServerConfig:
     """Configuration for the Gradio server"""
-    host: str = field(default_factory=lambda: os.getenv(key='GRADIO_SERVER_NAME'))
-    post: str = field(default_factory=lambda: os.getenv(key='GRADIO_SERVER_PORT'))
+
+    host: str = field(default_factory=lambda: os.getenv(key="GRADIO_SERVER_NAME"))
+    port: int = field(default_factory=lambda: int(os.getenv(key="GRADIO_SERVER_PORT")))
     share: bool = False
 
 
 @dataclass(frozen=True)
 class PathConfig:
     """File path configuration"""
+
     base_dir: Path = field(default_factory=lambda: Path.cwd())
 
     @property
     def prescription_file(self) -> Path:
         return self.base_dir / "prescription.txt"
-    
+
     @property
     def audio_file(self) -> Path:
         return self.base_dir / "voice.mp3"
@@ -88,6 +107,7 @@ class PathConfig:
 @dataclass
 class AppConfig:
     """Main application configuration"""
+
     llm: LLMConfig = field(default_factory=LLMConfig)
     server: ServerConfig = field(default_factory=ServerConfig)
     paths: PathConfig = field(default_factory=PathConfig)

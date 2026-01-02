@@ -23,7 +23,7 @@ class FileHandler:
 
         Returns:
             True if the file was deleted, False if it didn't exist
-        
+
         Raises:
             FileOperationError: If deletion fails
         """
@@ -33,13 +33,15 @@ class FileHandler:
                 file_path.unlink()
                 logger.debug(f"Deleted file: {file_path}")
                 return True
-            
+
             return False
         except PermissionError as e:
-            raise FileOperationError(f"Permission denied while deleting {file_path}: {e}")
+            raise FileOperationError(
+                f"Permission denied while deleting {file_path}: {e}"
+            )
         except OSError as e:
             raise FileOperationError(f"Failed to delete {file_path}: {e}")
-    
+
     @staticmethod
     def safe_write(file_path: Path, content: str, encoding: str = "utf-8") -> None:
         """
@@ -49,7 +51,7 @@ class FileHandler:
             file_path: Path to write to
             content: Content to write
             encoding: File encoding
-        
+
         Raises:
             FileOperationError: If write fails
         """
@@ -62,7 +64,7 @@ class FileHandler:
             raise FileOperationError(f"Permission denied writing to {file_path}: {e}")
         except OSError as e:
             raise FileOperationError(f"Failed to write to {file_path}: {e}")
-    
+
     @staticmethod
     def safe_read(file_path: Path, encoding: str = "utf-8") -> Optional[str]:
         """
@@ -71,10 +73,10 @@ class FileHandler:
         Args:
             file_path: Path to read from
             encoding: File encoding
-        
+
         Returns:
             File content or None if file doesn't exist
-        
+
         Raises:
             FileOperationError: If read fails
         """
@@ -82,7 +84,7 @@ class FileHandler:
         try:
             if not file_path.exists():
                 return None
-            
+
             return file_path.read_text(encoding=encoding)
         except PermissionError as e:
             raise FileOperationError(f"Permission denied reading {file_path}: {e}")

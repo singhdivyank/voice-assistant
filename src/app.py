@@ -6,17 +6,8 @@ from typing import Optional
 
 import gradio as gr
 
-from src.config.settings import (
-    AppConfig,
-    APP_DESCRIPTION,
-    Language,
-    Gender
-)
-from src.core.diagnosis import (
-    DiagnosisService, 
-    DiagnosisSession, 
-    PatientInfo
-)
+from src.config.settings import AppConfig, APP_DESCRIPTION, Language, Gender
+from src.core.diagnosis import DiagnosisService, DiagnosisSession, PatientInfo
 from src.core.prescription import PrescriptionService
 from src.services.speech import SpeechService
 from src.services.translation import TranslationService
@@ -24,8 +15,7 @@ from src.utils.exceptions import NetworkError, DocJarvisError
 
 
 logging.basicConfig(
-    level = logging.INFO,
-    format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -33,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SessionContext:
     "Context for a consultaion session"
+
     langauge: Language
     patient: PatientInfo
     translation: TranslationService
@@ -54,13 +45,8 @@ class DocJarvis:
         self.config = AppConfig()
         self.diagnosis_service = DiagnosisService()
         self.prescription_service = PrescriptionService()
-    
-    def perform_consultation(
-            self, 
-            language: str, 
-            gender: list[str], 
-            age: int
-        ) -> str:
+
+    def perform_consultation(self, language: str, gender: list[str], age: int) -> str:
         """
         Run a complete medical consultation.
 
@@ -68,7 +54,7 @@ class DocJarvis:
             language: Selected language name
             gender: Selected gender
             age: Patient age
-        
+
         Returns:
             Path to the generated prescription or error message
         """
@@ -85,13 +71,10 @@ class DocJarvis:
         except Exception as e:
             logger.exception(f"Unexpected error: {e}")
             return "An unexpected error occured. Please try again"
-    
+
     def create_session_context(
-            self, 
-            language: str, 
-            gender: list[str], 
-            age: int
-        ) -> SessionContext:
+        self, language: str, gender: list[str], age: int
+    ) -> SessionContext:
         """Create the session context with all required services."""
 
         language = Language.from_sring(name=language)
@@ -104,9 +87,9 @@ class DocJarvis:
             translation=TranslationService(target_language=language),
             speech=SpeechService(language=language, paths=paths),
             diagnosis=self.diagnosis_service,
-            prescription=self.prescription_service
+            prescription=self.prescription_service,
         )
-    
+
     def execute_consultation(self, context: SessionContext) -> str:
         """Execute the main consultation flow"""
         messages = context.translation.get_msgs()
@@ -117,16 +100,18 @@ class DocJarvis:
         complaint_english = context.translation.to_english(text=initial_complaint)
         logger.info(f"Initial complaint: {complaint_english}")
 
-        context.session = context.diagnosis.create_session(context.patient, initial_complaint)
+        context.session = context.diagnosis.create_session(
+            context.patient, initial_complaint
+        )
         self.conduct_qa(context)
-        
+
         medication = context.diagnosis.complete_session(context.session)
         medication_localised = context.translation.to_user_language(text=medication)
         prescription_path = context.prescription.create_prescription(context.session)
         context.speech.speak(medication_localised)
 
         return str(prescription_path)
-    
+
     def conduct_qa(self, context: SessionContext) -> None:
         """
         Conduct the diagnosis Q&A session.
@@ -137,8 +122,8 @@ class DocJarvis:
 
         for idx, question in enumerate(context.session.questions):
             if not question:
-                context
-        
+                continue
+
             question_localized = context.translation.to_user_language(text=question)
             context.speech.speak(text=question_localized)
 
@@ -146,14 +131,15 @@ class DocJarvis:
                 response = context.speech.listen()
                 response_english = context.translation.to_english(response)
                 context.diagnosis.add_response(
-                    session=context.session,
-                    question_idx=idx,
-                    answer=response_english
+                    session=context.session, question_idx=idx, answer=response_english
                 )
-                context.diagnosis.add_response(context.session, idx, response_english)
             except NetworkError:
                 logger.warning(f"Network error during Q&A at question {idx}")
                 continue
+            except Exception as e:
+                logger.warning(f"Error during Q&A at question {idx}: {e}")
+                continue
+
 
 def create_interface(app: DocJarvis) -> gr.Interface:
     """
@@ -161,7 +147,7 @@ def create_interface(app: DocJarvis) -> gr.Interface:
 
     Args:
         app: DocJarvis application instance
-    
+
     Returns:
         configured Gradio interface
     """
@@ -173,13 +159,13 @@ def create_interface(app: DocJarvis) -> gr.Interface:
                 multiselect=False,
                 label="language selection",
                 show_label=True,
-                interactive=True
+                interactive=True,
             ),
             gr.CheckboxGroup(
                 choices=[g.value for g in Gender],
                 label="gender selection",
                 show_label=True,
-                interactive=True
+                interactive=True,
             ),
             gr.Slider(
                 minimum=10,
@@ -187,14 +173,15 @@ def create_interface(app: DocJarvis) -> gr.Interface:
                 step=2,
                 label="age selection",
                 show_label=True,
-                interactive=True
-            )
+                interactive=True,
+            ),
         ],
-        outputs=gr.TextBox(label="Prescription File Path"),
+        outputs=gr.Textbox(label="Prescription File Path"),
         title="DocJarvis -- AI Medical Assistant",
         description=APP_DESCRIPTION,
-        allow_flagging="never"
+        allow_flagging="never",
     )
+
 
 def main() -> None:
     """Application entry point"""
@@ -204,9 +191,9 @@ def main() -> None:
     interface.launch(
         server_name=config.server.host,
         server_port=config.server.port,
-        share=config.server.share
+        share=config.server.share,
     )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

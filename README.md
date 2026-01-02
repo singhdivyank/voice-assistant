@@ -59,7 +59,12 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. **Run the application**
+4. **Configure environment**
+```bash
+cp .env .example .env
+```
+
+5. **Run the application**
 
 ```bash
 python -m src.app
@@ -81,6 +86,20 @@ sudo apt-get install python3-pyaudio portaudio19-dev
 pip install pyaudio
 ```
 
+For audio playback on Linux, install one of these players:
+
+```bash
+# Recommended
+sudo apt-get install mpg123
+
+# Alternatives
+sudo apt-get install mpg321
+sudo apt-get install ffmpeg  # provides ffplay
+```
+
+**PyAudio installation on Windows**:
+Audio playback uses PowerShell's built-in Media.SoundPlayer (no additional installation required)
+
 ## Configuration
 
 Create a `.env` file with the following variables:
@@ -98,7 +117,7 @@ GRADIO_SERVER_PORT=7860
 1. Open the web interface (default: http://localhost:7860)
 2. Select your preferred language
 3. Enter your gender and age
-4. Click Submit to start the consultation
+4. Click **Submit** to start the consultation
 5. Speak your symptoms when prompted
 6. Answer follow-up questions verbally
 7. Receive your consultation summary

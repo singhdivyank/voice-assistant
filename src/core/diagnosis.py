@@ -35,21 +35,23 @@ class DiagnosisEngine:
     def create_llm(self) -> None:
         """Create LLM instance"""
         self.llm = ChatGoogleGenerativeAI(
-            name=self.config.model_name, 
+            name=self.config.model_name,
             temperature=self.config.temperature,
             model=self.config.gemini_model,
-            convert_system_message_to_human=True
+            convert_system_message_to_human=True,
         )
-    
+
     def create_prompts(self) -> None:
         """Create diagnosis and medication prompt instances"""
-        self.diagnosis_prompt = ChatPromptTemplate.from_messages([
-            ("system", "you are a medical assessment assistant"), 
-            ("human", DIAGNOSIS_PROMPT)
-        ])
-        self.medication_prompt = ChatPromptTemplate.from_messages([
-            ("human", MEDICATION_PROMPT)
-        ])
+        self.diagnosis_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", "you are a medical assessment assistant"),
+                ("human", DIAGNOSIS_PROMPT),
+            ]
+        )
+        self.medication_prompt = ChatPromptTemplate.from_messages(
+            [("human", MEDICATION_PROMPT)]
+        )
 
     def generate_questions(self, complaint: str) -> list[str]:
         """
@@ -57,10 +59,10 @@ class DiagnosisEngine:
 
         Params:
             complaint (str): Patient's initial complaint
-        
+
         Returns:
             List of diagnostic questions
-        
+
         Raises:
             DiagnosisError: if question generation fails
         """
@@ -74,41 +76,43 @@ class DiagnosisEngine:
         except Exception as e:
             logger.error(f"Failed to generate questions: {e}")
             raise DiagnosisError(f"Could not generate diagnostic questions: {e}")
-    
+
     def generate_medication(self, session: DiagnosisSession) -> str:
         """
         Generate medication and lifestyle recommendations.
 
         Args:
             session: Complete diagnosis session with conversation
-        
+
         Returns:
             Medication and lifestyle recommendations
-        
+
         Raises:
             MedicationError: If recommendation generation fails
         """
 
         try:
             chain = self.medication_prompt | self.llm
-            response = chain.invoke({
-                "age": session.patient.age,
-                "gender": session.patient.gender.value,
-                "conversation": session.conversation_summary
-            })
+            response = chain.invoke(
+                {
+                    "age": session.patient.age,
+                    "gender": session.patient.gender.value,
+                    "conversation": session.conversation_summary,
+                }
+            )
             logger.info("Generated medication recommendations")
             return response.content
         except Exception as error:
             logger.error(f"Failed to generate medication: {error}")
             raise MedicationError(f"Could not generate recommendations: {error}")
-    
+
     def _parse_questions(self, response: str) -> list[str]:
         """
         Parse questions from LLM resposne.
 
         Args:
             response: Raw LLM response.
-        
+
         Return:
             List of cleaned questions
         """
@@ -117,9 +121,9 @@ class DiagnosisEngine:
 
         for line in lines:
             cleaned = re.sub(r"^\d+[\.\)]\s*", "", line.strip())
-            if cleaned and len(cleaned)>5:
+            if cleaned and len(cleaned) > 5:
                 questions.append(cleaned)
-        
+
         return questions[:3]
 
 
@@ -131,32 +135,27 @@ class DiagnosisService:
     through questions to final recommendations
     """
 
-    def __int__(self):
+    def __init__(self):
         self.engine = DiagnosisEngine()
-    
-    def create_session(self, patient: PatientInfo, complaint: str):
+
+    def create_session(self, patient: PatientInfo, complaint: str) -> DiagnosisSession:
         """
         Create a new diagnosis session.
 
         Args:
             patient: Patient information
             complaint: Initial complaint
-        
+
         Returns:
             New Diagnosis session with generated questions
         """
-        session = DiagnosisSession(
-            patient=patient,
-            initial_complaint=complaint
-        )
+        session = DiagnosisSession(patient=patient, initial_complaint=complaint)
         session.questions = self.engine.generate_questions(complaint=complaint)
+        return session
 
     def add_response(
-            self, 
-            session: DiagnosisSession, 
-            question_idx: int, 
-            answer: str
-        ) -> None:
+        self, session: DiagnosisSession, question_idx: int, answer: str
+    ) -> None:
         """
         Add a patient's response to a diagnostic question.
 
@@ -167,20 +166,20 @@ class DiagnosisService:
         """
 
         if question_idx < len(session.questions):
-            session.conversation.append(ConversationTurn(
-                question=session.questions[question_idx],
-                answer=answer
-            ))
-    
+            session.conversation.append(
+                ConversationTurn(
+                    question=session.questions[question_idx], answer=answer
+                )
+            )
+
     def complete_session(self, session: DiagnosisSession) -> str:
         """
         Complete the diagnosis and generate recommendations.
 
         Args:
             session: Complete diagnosis session
-        
+
         Returns:
             Medication and lifestyle recommendations
         """
         return self.engine.generate_medication(session=session)
-

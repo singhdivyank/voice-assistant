@@ -2,14 +2,15 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Protocol
- 
+from typing import Optional
+
 from src.config.settings import Gender
 
 
 @dataclass
 class ConversationTurn:
     """Represents a single turn in doctor-patient conversation"""
+
     question: str
     answer: str
 
@@ -17,16 +18,18 @@ class ConversationTurn:
 @dataclass
 class PatientInfo:
     """Patient demographic information"""
+
     age: int
     gender: Gender
 
     def __str__(self) -> str:
-        return f"Age: {str.age}, Gender: {self.gender.value}"
+        return f"Age: {self.age}, Gender: {self.gender.value}"
 
 
 @dataclass
 class DiagnosisSession:
     """Track the state of diagnosis session"""
+
     patient: PatientInfo
     initial_complaint: str
     conversation: list[ConversationTurn] = field(default_factory=list)
@@ -46,6 +49,7 @@ class DiagnosisSession:
 @dataclass
 class PrescriptionMetadata:
     """Metadata for a prescription document"""
+
     created_at: datetime
     session_id: str
     file_path: Path
@@ -54,6 +58,7 @@ class PrescriptionMetadata:
 @dataclass
 class TranslationResult:
     """Result of a translation operation"""
+
     original: str
     translated: str
     source_lang: str
@@ -76,11 +81,3 @@ class TextToSpeechService(ABC):
     def speak(self, text: str) -> None:
         """Convert text to speech and play it"""
         pass
-
-
-class TranslatorProtocol(Protocol):
-    """Protocol for translation services"""
-
-    def translate(self, text: str, dest: str) -> object:
-        """Translates text to designated language"""
-        ...
