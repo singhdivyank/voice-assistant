@@ -9,7 +9,7 @@ from langchain.prompts import ChatPromptTemplate
 
 from src.config.settings import LLMConfig, DIAGNOSIS_PROMPT, MEDICATION_PROMPT
 from src.utils.exceptions import DiagnosisError, MedicationError
-from utils.classConsts import ConversationTurn, DiagnosisSession, PatientInfo
+from utils.consts import ConversationTurn, DiagnosisSession, PatientInfo
 
 logger = logging.getLogger(__name__)
 

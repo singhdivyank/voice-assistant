@@ -63,13 +63,13 @@ class DocJarvis:
             ctx = self.create_session_context(language, gender, age)
             return self.execute_consultation(ctx)
         except NetworkError as e:
-            logger.error("Network error: %s", {e})
-            return "Error: Please check you rinternet connection"
+            logger.error("Network error: %s", e)
+            return "Error: Please check your internet connection"
         except DocJarvisError as e:
-            logger.error("Application error: %s", {e})
+            logger.error("Application error: %s", e)
             return f"Error: {e}"
-        except Exception as e:
-            logger.exception("Unexpected error: %s", {e})
+        except (ValueError, RuntimeError) as e:
+            logger.exception("Unexpected error: %s", e)
             return "An unexpected error occured. Please try again"
 
     def create_session_context(
@@ -135,7 +135,7 @@ class DocJarvis:
             except NetworkError:
                 logger.warning("Network error during Q&A at question %s", idx)
                 continue
-            except Exception as e:
+            except (ValueError, RuntimeError) as e:
                 logger.warning("Error during Q&A at question %s: %s", idx, e)
                 continue
 

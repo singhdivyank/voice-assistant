@@ -9,7 +9,7 @@ import speech_recognition as sr
 from gtts import gTTS
 
 from src.config.settings import Language, PathConfig, Platforms
-from utils.classConsts import SpeechToTextService
+from utils.consts import SpeechToTextService
 from src.utils.exceptions import NetworkError, TextToSpeechError, TranscriptionError
 from src.utils.file_handler import FileHandler
 
@@ -54,13 +54,13 @@ class SpeechRecognizer(SpeechToTextService):
         except sr.RequestError as e:
             logger.error("Network error during transcription: %s", e)
             raise NetworkError("No internet connection for speech recognition") from e
-        except sr.UnknownValueError:
+        except sr.UnknownValueError as exc:
             logger.warning("Could not understand audio")
-            raise TranscriptionError("Could not understand audio")
+            raise TranscriptionError("Could not understand audio") from exc
         except sr.WaitTimeoutError:
             logger.warning("Listening timed out")
             raise TranscriptionError("Listening timed out") from e
-        except Exception as e:
+        except (ValueError, RuntimeError) as e:
             logger.error("Transcription failed: %s", e)
             raise TranscriptionError(f"Speech recognition failed: {e}") from e
 
