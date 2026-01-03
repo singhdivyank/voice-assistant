@@ -147,8 +147,6 @@ class TextToSpeech:
             audio.save(savefile=str(self.audio_path))
             logger.debug("Generated audio for: %s", text[:50])
             self.play_audio_file(str(self.audio_path))
-        except TextToSpeechError:
-            raise
         except (ValueError, RuntimeError) as e:
             logger.error("TTS failed: %s", e)
             raise TextToSpeechError(f"Text-to-speech failed: {e}") from e
@@ -159,7 +157,7 @@ class TextToSpeech:
         """Delete audio file"""
         try:
             self.file_handler.safe_delete(self.audio_path)
-        except Exception as e:
+        except (ValueError, RuntimeError) as e:
             logger.warning("Failed to cleanup audio file: %s", e)
 
 

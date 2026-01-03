@@ -70,7 +70,7 @@ class DiagnosisEngine:
         try:
             chain = self.diagnosis_prompt | self.llm
             response = chain.invoke({"input": complaint})
-            questions = self._parse_questions(response.content)
+            questions = self._parse_questions(response.content.split())
             logger.info("Generated %s diagnostic questions", len(questions))
             return questions
         except Exception as e:
@@ -118,7 +118,7 @@ class DiagnosisEngine:
         Return:
             List of cleaned questions
         """
-        lines = response.strip().split("\n")
+        lines = response.split("\n")
         questions = []
 
         for line in lines:

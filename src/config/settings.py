@@ -62,7 +62,7 @@ class Platforms(Enum):
     MAC = "Darwin"
 
     @classmethod
-    def from_sring(cls, name: str) -> "Platforms":
+    def from_string(cls, name: str) -> "Platforms":
         """Get platform enum from string name"""
         mapping = {lang.name.lower(): lang for lang in cls}
         return mapping.get(name.lower(), cls.MAC)
