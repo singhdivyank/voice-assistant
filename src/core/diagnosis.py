@@ -104,7 +104,9 @@ class DiagnosisEngine:
             return response.content
         except Exception as error:
             logger.error("Failed to generate medication: %s", error)
-            raise MedicationError(f"Could not generate recommendations: {error}") from error
+            raise MedicationError(
+                f"Could not generate recommendations: {error}"
+            ) from error
 
     def _parse_questions(self, response: str) -> list[str]:
         """

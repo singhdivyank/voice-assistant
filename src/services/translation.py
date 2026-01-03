@@ -59,7 +59,12 @@ class TranslationService:
         try:
             translator = GoogleTranslator(source=source_lang, target=dest_language)
             result = translator.translate(text=text)
-            logger.debug("Translated '%s...' from %s to %s", text[:50], source_lang, dest_language)
+            logger.debug(
+                "Translated '%s...' from %s to %s",
+                text[:50],
+                source_lang,
+                dest_language,
+            )
             return result
         except Exception as e:
             logger.error("Translation failed: %s", e)

@@ -61,7 +61,9 @@ class FileHandler:
             file_path.write_text(content, encoding=encoding)
             logger.debug("Written to file: %s", file_path)
         except PermissionError as e:
-            raise FileOperationError(f"Permission denied writing to {file_path}: {e}") from e
+            raise FileOperationError(
+                f"Permission denied writing to {file_path}: {e}"
+            ) from e
         except OSError as e:
             raise FileOperationError(f"Failed to write to {file_path}: {e}") from e
 
@@ -87,6 +89,8 @@ class FileHandler:
 
             return file_path.read_text(encoding=encoding)
         except PermissionError as e:
-            raise FileOperationError(f"Permission denied reading {file_path}: {e}") from e
+            raise FileOperationError(
+                f"Permission denied reading {file_path}: {e}"
+            ) from e
         except OSError as e:
             raise FileOperationError(f"Failed to read {file_path}: {e}") from e

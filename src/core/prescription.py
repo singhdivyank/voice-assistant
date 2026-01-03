@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class PrescriptionGenerator:
     """Generates and manages prescription documents"""
-    
+
     def __init__(self):
         self.paths = PathConfig()
         self.file_handler = FileHandler()
@@ -44,7 +44,9 @@ class PrescriptionGenerator:
             return file_path
         except Exception as error:
             logger.error("Failed to generate prescription: %s", error)
-            raise FileOperationError(f"Could not generate prescription: {error}") from error
+            raise FileOperationError(
+                f"Could not generate prescription: {error}"
+            ) from error
 
     def format_prescription(self, session: DiagnosisSession) -> str:
         """
