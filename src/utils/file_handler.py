@@ -31,16 +31,16 @@ class FileHandler:
         try:
             if file_path.exists():
                 file_path.unlink()
-                logger.debug(f"Deleted file: {file_path}")
+                logger.debug("Deleted file: %s", file_path)
                 return True
 
             return False
         except PermissionError as e:
             raise FileOperationError(
                 f"Permission denied while deleting {file_path}: {e}"
-            )
+            ) from e
         except OSError as e:
-            raise FileOperationError(f"Failed to delete {file_path}: {e}")
+            raise FileOperationError(f"Failed to delete {file_path}: {e}") from e
 
     @staticmethod
     def safe_write(file_path: Path, content: str, encoding: str = "utf-8") -> None:
@@ -59,11 +59,11 @@ class FileHandler:
         try:
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text(content, encoding=encoding)
-            logger.debug(f"Written to file: {file_path}")
+            logger.debug("Written to file: %s", file_path)
         except PermissionError as e:
-            raise FileOperationError(f"Permission denied writing to {file_path}: {e}")
+            raise FileOperationError(f"Permission denied writing to {file_path}: {e}") from e
         except OSError as e:
-            raise FileOperationError(f"Failed to write to {file_path}: {e}")
+            raise FileOperationError(f"Failed to write to {file_path}: {e}") from e
 
     @staticmethod
     def safe_read(file_path: Path, encoding: str = "utf-8") -> Optional[str]:
@@ -87,6 +87,6 @@ class FileHandler:
 
             return file_path.read_text(encoding=encoding)
         except PermissionError as e:
-            raise FileOperationError(f"Permission denied reading {file_path}: {e}")
+            raise FileOperationError(f"Permission denied reading {file_path}: {e}") from e
         except OSError as e:
-            raise FileOperationError(f"Failed to read {file_path}: {e}")
+            raise FileOperationError(f"Failed to read {file_path}: {e}") from e

@@ -65,13 +65,12 @@ class TranslationResult:
     target_lang: str
 
 
-class SpeechToTextServive(ABC):
+class SpeechToTextService(ABC):
     """Abstract base class for speech-to-text services."""
 
     @abstractmethod
     def transcribe(self) -> str:
         """Transcribe auio to text."""
-        pass
 
 
 class TextToSpeechService(ABC):
@@ -80,4 +79,3 @@ class TextToSpeechService(ABC):
     @abstractmethod
     def speak(self, text: str) -> None:
         """Convert text to speech and play it"""
-        pass

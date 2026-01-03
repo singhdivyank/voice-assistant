@@ -59,13 +59,11 @@ class TranslationService:
         try:
             translator = GoogleTranslator(source=source_lang, target=dest_language)
             result = translator.translate(text=text)
-            logger.debug(
-                f"Translated '{text[:50]}...' from {source_lang} to {dest_language}"
-            )
+            logger.debug("Translated '%s...' from %s to %s", text[:50], source_lang, dest_language)
             return result
         except Exception as e:
-            logger.error(f"Translation failed: {e}")
-            raise TranslationError(f"Failed to translate text: {e}")
+            logger.error("Translation failed: %s", e)
+            raise TranslationError(f"Failed to translate text: {e}") from e
 
     def to_english(self, text: str) -> str:
         """Convinience method to translate to English for LLM"""

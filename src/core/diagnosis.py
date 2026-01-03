@@ -9,7 +9,7 @@ from langchain.prompts import ChatPromptTemplate
 
 from src.config.settings import LLMConfig, DIAGNOSIS_PROMPT, MEDICATION_PROMPT
 from src.utils.exceptions import DiagnosisError, MedicationError
-from src.utils.dataclasses import DiagnosisSession, PatientInfo, ConversationTurn
+from utils.classConsts import ConversationTurn, DiagnosisSession, PatientInfo
 
 logger = logging.getLogger(__name__)
 
@@ -71,11 +71,11 @@ class DiagnosisEngine:
             chain = self.diagnosis_prompt | self.llm
             response = chain.invoke({"input": complaint})
             questions = self._parse_questions(response.content)
-            logger.info(f"Generated {len(questions)} diagnostic questions")
+            logger.info("Generated %s diagnostic questions", len(questions))
             return questions
         except Exception as e:
-            logger.error(f"Failed to generate questions: {e}")
-            raise DiagnosisError(f"Could not generate diagnostic questions: {e}")
+            logger.error("Failed to generate questions: %s", e)
+            raise DiagnosisError(f"Could not generate diagnostic questions: {e}") from e
 
     def generate_medication(self, session: DiagnosisSession) -> str:
         """
@@ -103,8 +103,8 @@ class DiagnosisEngine:
             logger.info("Generated medication recommendations")
             return response.content
         except Exception as error:
-            logger.error(f"Failed to generate medication: {error}")
-            raise MedicationError(f"Could not generate recommendations: {error}")
+            logger.error("Failed to generate medication: %s", error)
+            raise MedicationError(f"Could not generate recommendations: {error}") from error
 
     def _parse_questions(self, response: str) -> list[str]:
         """

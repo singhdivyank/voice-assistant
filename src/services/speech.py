@@ -9,7 +9,7 @@ import speech_recognition as sr
 from gtts import gTTS
 
 from src.config.settings import Language, PathConfig, Platforms
-from src.utils.dataclasses import SpeechToTextService
+from utils.classConsts import SpeechToTextService
 from src.utils.exceptions import NetworkError, TextToSpeechError, TranscriptionError
 from src.utils.file_handler import FileHandler
 
@@ -49,20 +49,20 @@ class SpeechRecognizer(SpeechToTextService):
             txt = self.recognizer.recognize_google(
                 audio_data=audio, language=self.language.value
             )
-            logger.info(f"Transcribed: {txt[:50]} ...")
+            logger.info("Transcribed: %s ...", txt[:50])
             return txt
         except sr.RequestError as e:
-            logger.error(f"Network error during transcription: {e}")
-            raise NetworkError("No internet connection for speech recognition")
+            logger.error("Network error during transcription: %s", e)
+            raise NetworkError("No internet connection for speech recognition") from e
         except sr.UnknownValueError:
             logger.warning("Could not understand audio")
             raise TranscriptionError("Could not understand audio")
         except sr.WaitTimeoutError:
             logger.warning("Listening timed out")
-            raise TranscriptionError("Listening timed out")
+            raise TranscriptionError("Listening timed out") from e
         except Exception as e:
-            logger.error(f"Transcription failed: {e}")
-            raise TranscriptionError(f"Speech recognition failed: {e}")
+            logger.error("Transcription failed: %s", e)
+            raise TranscriptionError(f"Speech recognition failed: {e}") from e
 
 
 class TextToSpeech:
@@ -121,9 +121,9 @@ class TextToSpeech:
                         "sudo apt-get install mpg123"
                     )
         except subprocess.CalledProcessError as e:
-            raise TextToSpeechError(f"Audio playback failed: {e}")
+            raise TextToSpeechError(f"Audio playback failed: {e}") from e
         except Exception as e:
-            raise TextToSpeechError(f"Failed to play audio: {e}")
+            raise TextToSpeechError(f"Failed to play audio: {e}") from e
 
     def speak(self, text: str, slow: bool = False) -> None:
         """
@@ -145,13 +145,13 @@ class TextToSpeech:
             self.cleanup()
             audio = gTTS(text=text, lang=self.language.value, slow=slow)
             audio.save(savefile=str(self.audio_path))
-            logger.debug(f"Generated audio for: {text[:50]}")
+            logger.debug("Generated audio for: %s", text[:50])
             self.play_audio_file(str(self.audio_path))
         except TextToSpeechError:
             raise
         except Exception as e:
-            logger.error(f"TTS failed: {e}")
-            raise TextToSpeechError(f"Text-to-speech failed: {e}")
+            logger.error("TTS failed: %s", e)
+            raise TextToSpeechError(f"Text-to-speech failed: {e}") from e
         finally:
             self.cleanup()
 
@@ -160,7 +160,7 @@ class TextToSpeech:
         try:
             self.file_handler.safe_delete(self.audio_path)
         except Exception as e:
-            logger.warning(f"Failed to cleanup audio file: {e}")
+            logger.warning("Failed to cleanup audio file: %s", e)
 
 
 class SpeechService:

@@ -63,13 +63,13 @@ class DocJarvis:
             ctx = self.create_session_context(language, gender, age)
             return self.execute_consultation(ctx)
         except NetworkError as e:
-            logger.error(f"Network error: {e}")
+            logger.error("Network error: %s", {e})
             return "Error: Please check you rinternet connection"
         except DocJarvisError as e:
-            logger.error(f"Application error: {e}")
+            logger.error("Application error: %s", {e})
             return f"Error: {e}"
         except Exception as e:
-            logger.exception(f"Unexpected error: {e}")
+            logger.exception("Unexpected error: %s", {e})
             return "An unexpected error occured. Please try again"
 
     def create_session_context(
@@ -80,12 +80,11 @@ class DocJarvis:
         language = Language.from_sring(name=language)
         gender_enum = Gender.from_string(value=gender[0] if gender else "Undisclosed")
         patient = PatientInfo(age=age, gender=gender_enum)
-        paths = self.config.paths
         return SessionContext(
             langauge=language,
             patient=patient,
             translation=TranslationService(target_language=language),
-            speech=SpeechService(language=language, paths=paths),
+            speech=SpeechService(language=language, paths=self.config.paths),
             diagnosis=self.diagnosis_service,
             prescription=self.prescription_service,
         )
@@ -98,7 +97,7 @@ class DocJarvis:
         context.speech.speak(messages["instruction"])
         initial_complaint = context.speech.listen()
         complaint_english = context.translation.to_english(text=initial_complaint)
-        logger.info(f"Initial complaint: {complaint_english}")
+        logger.info("Initial complaint: %s", complaint_english)
 
         context.session = context.diagnosis.create_session(
             context.patient, initial_complaint
@@ -134,10 +133,10 @@ class DocJarvis:
                     session=context.session, question_idx=idx, answer=response_english
                 )
             except NetworkError:
-                logger.warning(f"Network error during Q&A at question {idx}")
+                logger.warning("Network error during Q&A at question %s", idx)
                 continue
             except Exception as e:
-                logger.warning(f"Error during Q&A at question {idx}: {e}")
+                logger.warning("Error during Q&A at question %s: %s", idx, e)
                 continue
 
 

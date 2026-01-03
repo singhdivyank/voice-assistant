@@ -1,3 +1,5 @@
+"""Application configurations and settings."""
+
 import os
 from dataclasses import dataclass, field
 from enum import Enum
@@ -93,14 +95,16 @@ class ServerConfig:
 class PathConfig:
     """File path configuration"""
 
-    base_dir: Path = field(default_factory=lambda: Path.cwd())
+    base_dir: Path = field(default_factory=Path.cwd)
 
     @property
     def prescription_file(self) -> Path:
+        """Get the path to prescription file."""
         return self.base_dir / "prescription.txt"
 
     @property
     def audio_file(self) -> Path:
+        """Get the path to audio file."""
         return self.base_dir / "voice.mp3"
 
 
@@ -130,7 +134,7 @@ Guidelines:
 Patient's initial complaint: {input}
 
 Provide your 3 questions, one per line, numbered 1-3
-"""
+""".strip()
 
 MEDICATION_PROMPT = """
 You are a certified medical professional in India providing treatment recommendations.\
@@ -150,7 +154,7 @@ Provide recommendations following these guidelines:
 5. Consider the patient's age and gender in your recommendations
 
 Format your response with clear sections for Diet, Lifestyle, and Medications (if needed).
-"""
+""".strip()
 
 PRESCRIPTION_TEMPLATE = """
 Date: {date}
@@ -169,7 +173,7 @@ Follow-up:
 
 ------ Recommendation --------
 {medication}
-"""
+""".strip()
 
 APP_DESCRIPTION = """
 Welcome to DocJarvis, your AI-powered medical consultation assistant.

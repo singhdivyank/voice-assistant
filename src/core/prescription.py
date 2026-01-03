@@ -14,9 +14,12 @@ logger = logging.getLogger(__name__)
 
 
 class PrescriptionGenerator:
+    """Generates and manages prescription documents"""
+    
     def __init__(self):
         self.paths = PathConfig()
         self.file_handler = FileHandler()
+        self.no_conversation = "No follow-up questions recorded"
 
     def generate(self, session: DiagnosisSession) -> Path:
         """
@@ -37,11 +40,11 @@ class PrescriptionGenerator:
             content = self.format_prescription(session)
             file_path = self.paths.prescription_file
             self.file_handler.safe_write(file_path, content)
-            logger.info(f"Generated prescription: {file_path}")
+            logger.info("Generated prescription: %s", file_path)
             return file_path
         except Exception as error:
-            logger.error(f"Failed to generate prescription: {error}")
-            raise FileOperationError(f"Could not generate prescription: {error}")
+            logger.error("Failed to generate prescription: %s", error)
+            raise FileOperationError(f"Could not generate prescription: {error}") from error
 
     def format_prescription(self, session: DiagnosisSession) -> str:
         """
@@ -69,7 +72,7 @@ class PrescriptionGenerator:
     def format_conversation(self, session: DiagnosisSession) -> str:
         """Format the conversation for the prescription"""
         if not session.conversation:
-            return "No follow-up questions recorded"
+            return self.no_conversation
 
         lines = []
         for i, turn in enumerate(session.conversation, 1):
