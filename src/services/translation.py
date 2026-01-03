@@ -48,10 +48,10 @@ class TranslationService:
         Raises:
             TranslationError: If translation fails
         """
-        if not text or text.strip():
+        if not text or not text.strip():
             return text
 
-        if (to_english and self.is_english) or (not to_english and self.is_english):
+        if self.is_english:
             return text
 
         source_lang = "en" if not to_english else self.target_language.value
@@ -66,7 +66,7 @@ class TranslationService:
                 dest_language,
             )
             return result
-        except Exception as e:
+        except (ValueError, RuntimeError) as e:
             logger.error("Translation failed: %s", e)
             raise TranslationError(f"Failed to translate text: {e}") from e
 
