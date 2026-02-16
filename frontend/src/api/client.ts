@@ -38,7 +38,7 @@ class ApiClient {
                     error: 'Request failed',
                     type: 'NetworkError'
                 }));
-                throw new Error(error.error() || `HTTP ${response.status}`);
+                throw new Error(error.error || `HTTP ${response.status}`);
             }
             return response.json()
         } catch (error) {

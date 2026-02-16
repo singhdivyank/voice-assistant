@@ -5,12 +5,11 @@
 import { create } from 'zustand'
 import { devtools, persist } from 'zustand/middleware'
 import {
-    SessionState, PatientFormData, Gender, Language,
-    ConversationTurn
+    SessionState, PatientFormData, Gender, Language
 } from '../api/types';
 import apiClient from '../api/client';
 
-export type ConsulationPhase = 
+export type ConsultationPhase = 
     | 'patient-info'
     | 'complaint'
     | 'questions'
@@ -18,7 +17,7 @@ export type ConsulationPhase =
     | 'prescription'
     | 'complete';
 
-interface ConsulationState {
+interface ConsultationState {
     // Session data
     sessionId: string | null;
     sessionState: SessionState | null;
@@ -28,7 +27,7 @@ interface ConsulationState {
     complaint: string;
 
     // UI state
-    phase: ConsulationPhase;
+    phase: ConsultationPhase;
     currentQuestionIndex: number;
     isLoading: boolean;
     isStreaming: boolean;
@@ -45,7 +44,7 @@ interface ConsulationState {
     completeDiagnosis: (streaming?: boolean) => Promise<void>;
     generatePrescription: () => Promise<string>;
     reset: () => void;
-    setPhase: (phase: ConsulationPhase) => void;
+    setPhase: (phase: ConsultationPhase) => void;
     setError: (error: string | null) => void;
 }
 
@@ -55,7 +54,7 @@ const initialPatientData: PatientFormData = {
     language: 'en' as Language,
 };
 
-export const useConsultationStore = create<ConsulationState>(
+export const useConsultationStore = create<ConsultationState>(
     devtools(
         persist(
             (set, get) => ({
@@ -70,7 +69,6 @@ export const useConsultationStore = create<ConsulationState>(
                 error: null,
                 streamedMedication: '',
 
-                // Actions
                 setPatientData: (data) => 
                     set((state) => ({
                         patientData: { ...state.patientData, ...data }
