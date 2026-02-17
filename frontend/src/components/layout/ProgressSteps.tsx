@@ -1,15 +1,15 @@
 import React from 'react';
 import { Check } from 'lucide-react';
-import { ConsulationPhase } from '../../store/consultationStore';
+import { ConsultationPhase } from '../../store/consultationStore';
 
 interface Step {
-    phase: ConsulationPhase;
+    phase: ConsultationPhase;
     label: string;
     icon?: React.ReactNode;
 }
 
 interface ProgressStepsProps {
-    currentPhase: ConsulationPhase;
+    currentPhase: ConsultationPhase;
     steps?: Step[];
 }
 
