@@ -1,182 +1,134 @@
 # DocJarvis- AI Medical Assistant
 
-An AI-powered multilingual voice assistant for medical consultations. DocJarvis conducts initial patient assessments through voice interaction, supports 10 Indian languages, and generates consultation summaries.
+An AI-powered multilingual medical consultation assistant that conducts preliminary diagnosis and medication recommendations based on patient symptoms.
 
-> **Disclaimer:** This is an AI-assisted tool for educational purpose only. Always consult qualified healthcare professionals for medical advice.
-
-## Features
-
-* **Voice-based interaction**: Speech-to-text and text-to-spech capabilities
-
-* **Multilingual support**: English +9 regional Indian languages
-
-* **AI-powered diagnosis**: Uses Google's Gemini Pro for intellignet questioning
-
-* **Prescription generation**: Automated consultation summary documents
-
-* **User-friendly interface**: Gradio-based web UI
-
-## Supported Languages
-
-| Language | Code | Language | Code |
-| -------- | ---- | -------- | ---- |
-| English | en | Malayalam | ml |
-| Bengali | bn | Marathi | mr |
-| Gujarati | gu | Tamil | ta |
-| Hindi | hi | Telugu | te |
-| Kannada | kn | Urdu | ur |
-
-## Quick Start
-
-**Prerequisites**
-
-* Python 3.10+
-* Working microphone
-* Internet connection
-* Google AI Studio API key
-
-**Installation**
-
-1. **Clone the repository**
-
-```bash
-git clone https://github.com/singhdivyank/voice-assistant.git
-
-cd docjarvis
-```
-
-2. **Create virtual environment**
-
-```bash
-python -m venv venv
-
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. **Install dependencies**
-
-```bash
-pip install -r requirements.txt
-```
-
-4. **Configure environment**
-```bash
-cp .env .example .env
-```
-
-5. **Run the application**
-
-```bash
-python -m src.app
-```
-
-**PyAudio installation on Mac**:
-
-```bash
-brew install portaudio
-
-python3 -m pip install pyaudio
-```
-
-**PyAudio installation on Linux**:
-
-```bash
-sudo apt-get install python3-pyaudio portaudio19-dev
-
-pip install pyaudio
-```
-
-For audio playback on Linux, install one of these players:
-
-```bash
-# Recommended
-sudo apt-get install mpg123
-
-# Alternatives
-sudo apt-get install mpg321
-sudo apt-get install ffmpeg  # provides ffplay
-```
-
-**PyAudio installation on Windows**:
-Audio playback uses PowerShell's built-in Media.SoundPlayer (no additional installation required)
-
-## Configuration
-
-Create a `.env` file with the following variables:
-
-```bash
-GOOGLE_API_KEY=your_gemini_api_key_here
-
-# Optional (defaults shown)
-GRADIO_SERVER_NAME=0.0.0.0
-GRADIO_SERVER_PORT=7860
-```
-
-## Usage
-
-1. Open the web interface (default: http://localhost:7860)
-2. Select your preferred language
-3. Enter your gender and age
-4. Click **Submit** to start the consultation
-5. Speak your symptoms when prompted
-6. Answer follow-up questions verbally
-7. Receive your consultation summary
+> **Disclaimer:** This is an AI-assisted tool for **educational (informational) purposes only**. Always consult qualified healthcare professionals for medical advice.
 
 ## Project Structure
 
 ```
-
-voice-assistant/
-├── src/
-│   ├── config/          # Configuration and settings
-│   │   └── settings.py  # App config, prompts, enums
-│   ├── core/            # Core business logic
-│   │   ├── diagnosis.py # LLM-powered diagnosis
-│   │   └── prescription.py
-│   ├── services/        # External service integrations
-│   │   ├── speech.py    # STT/TTS services
-│   │   └── translation.py
-│   ├── utils/           # Utilities and helpers
-│   │   ├── exceptions.py
-│   │   └── file_handler.py
-│   └── app.py           # Main application
-├── requirements.txt
+docjarvis/
+├── backend/                      # Python FastAPI backend
+│   ├── src/
+│   │   ├── api/
+│   │   │   ├── __init__.py
+│   │   │   ├── main.py          # FastAPI app (artifact above)
+│   │   │   ├── routes/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── diagnosis.py
+│   │   │   │   └── prescription.py
+│   │   │   │   ├── sessions.py
+│   │   │   ├── schemas/         # Pydantic models
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── diagnosis.py
+│   │   │   │   ├── patient.py
+│   │   │   │   ├── session.py
+│   │   │   └── middleware/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── error_handler.py
+│   │   │   │   └── logging.py
+│   │   ├── config/
+│   │   │   ├── __init__.py
+│   │   │   └── monitoring.py
+│   │   │   └── settings.py
+│   │   ├── core/                
+│   │   │   ├── __init__.py
+│   │   │   ├── diagnosis.py
+│   │   │   └── prescription.py
+│   │   ├── services/      
+│   │   │   ├── __init__.py
+│   │   │   ├── session_store.py      
+│   │   │   ├── speech.py
+│   │   │   └── translation.py
+│   │   └── utils/
+│   │   │   ├── __init__.py
+│   │   │   ├── consts.py
+│   │   │   ├── exceptions.py
+│   │   │   └── file_handler.py
+│   ├── tests/
+│   │   ├── conftest.py
+│   │   ├── unit/
+│   │   │   ├── test_diagnosis.py
+│   │   │   └── test_translation.py
+│   │   ├── integration/
+│   │   │   └── test_api.py
+│   │   └── e2e/
+│   │       └── test_consultation_flow.py
+│   └── app.py
+│   ├── pyproject.toml
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/                     # React TypeScript frontend
+│   ├── src/
+│   │   ├── api/
+│   │   │   ├── index.ts
+│   │   │   ├── client.ts        # API client
+│   │   │   └── types.ts         # TypeScript types
+│   │   ├── components/
+│   │   │   ├── consultation/
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── PatientForm.tsx
+│   │   │   │   ├── ComplaintInput.tsx
+│   │   │   │   ├── QuestionAnswer.tsx
+│   │   │   │   ├── DiagnosisView.tsx
+│   │   │   |   └── PrescriptionCard.tsx
+│   │   │   ├── layout/
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── Container.tsx
+│   │   │   │   ├── Header.tsx
+│   │   │   │   ├── Footer.tsx
+│   │   │   |   └── ProgressSteps.tsx
+│   │   │   ├── speech/
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── SpeechControls.tsx
+│   │   │   |   └── VoiceInput.tsx
+│   │   │   ├── ui/              # Reusable UI components
+│   │   │   │   ├── Alert.tsx
+│   │   │   │   ├── Button.tsx
+│   │   │   │   ├── Card.tsx
+│   │   │   │   ├── Input.tsx
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── ProgressBar.tsx
+│   │   │   │   ├── Select.tsx
+│   │   │   │   ├── Spinner.tsx
+│   │   │   |   └── TextArea.tsx
+│   │   ├── hooks/
+│   │   │   ├── index.ts
+│   │   │   ├── useConsultation.ts
+│   │   │   ├── useLocalStorage.ts
+│   │   │   ├── useSpeechRecognition.ts
+│   │   │   ├── useSpeechSynthesis.ts
+│   │   │   └── useStreamingResponse.ts
+│   │   ├── store/               # State management
+│   │   │   ├── index.ts
+│   │   │   ├── consultationStore.ts
+│   │   │   └── settingsStore.ts
+│   │   ├── utils/
+│   │   │   ├── index.ts
+│   │   │   ├── constants.ts
+│   │   │   └── helpers.ts
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   └── index.css
+│   ├── public/
+│   ├── Dockerfile
+│   ├── env.d.ts
+│   ├── index.html
+│   ├── nginx.conf
+│   ├── package.json
+│   ├── tailwind.config.js
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   └── vite.config.ts
+├── .github/
+│   └── workflows/
+│       ├── ci.yml
+│       └── deploy.yml
+├── .gitignore
+├── .pylintrc
+├── docker-compose.yml
+├── otel-config.yml
+├── package-lock.json
+├── package.json
 └── README.md
-
-```
-
-## API Reference
-
-### DiagnosisService
-
-```
-from src.core.diagnosis import DiagnosisService, PatientInfo
-from src.config.settings import Gender
-
-service = DiagnosisService()
-patient = PatientInfo(age=30, gender=Gender.MALE)
-
-# Create session with diagnostic questions
-session = service.create_session(patient, "I have a headache")
-
-# Add patient responses
-service.add_response(session, 0, "It started yesterday")
-
-# Get recommendations
-recommendations = service.complete_session(session)
-```
-
-### TranslationService
-
-```
-from src.services.translation import TranslationService
-from src.config.settings import Language
-
-translator = TranslationService(Language.HINDI)
-
-# Translate for LLM (to English)
-english_text = translator.to_english("सिरदर्द है")
-
-# Translate for user
-hindi_text = translator.to_user_language("Take rest")
 ```

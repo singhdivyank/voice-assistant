@@ -54,7 +54,7 @@ const initialPatientData: PatientFormData = {
     language: 'en' as Language,
 };
 
-export const useConsultationStore = create<ConsultationState>(
+export const useConsultationStore = create<ConsultationState>()(
     devtools(
         persist(
             (set, get) => ({

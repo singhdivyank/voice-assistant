@@ -39,7 +39,7 @@ const defaultSettings = {
     fontSize: 'medium' as const,
     voiceEnabled: true,
     voiceSpeed: 'normal' as VoiceSpeed,
-    auoPlayResponses: false,
+    autoPlayResponses: false,
     reducedMotion: false,
     highContrast: false,
     saveHistory: true,
@@ -56,7 +56,7 @@ export const useSettingsStore = create<SettingsState>()(
                 setVoiceEnabled: (voiceEnabled) => set({ voiceEnabled }),
                 setVoiceSpeed: (voiceSpeed) => set({ voiceSpeed }),
                 setAutoPlayResponses: (autoPlayResponses) => set({ autoPlayResponses }),
-                setReduceMotion: (reducedMotion) => set({ reducedMotion }),
+                setReducedMotion: (reducedMotion) => set({ reducedMotion }),
                 setHighContrast: (highContrast) => set({ highContrast }),
                 setSaveHistory: (saveHistory) => set({ saveHistory }),
                 setAnalyticsEnabled: (analyticsEnabled) => set({ analyticsEnabled }),
@@ -70,10 +70,10 @@ export const useSettingsStore = create<SettingsState>()(
 
 export const applyTheme = (theme: Theme): void => {
     const root = document.documentElement;
-    const prefersDark = document.documentElement;
+    const prefersDark = window.matchMedia('(prefers-color-schema: dark)').matches;
 
     if (theme === 'dark' || (theme === 'system' && prefersDark)) {
-        root.classList.add('Dark');
+        root.classList.add('dark');
     } else {
         root.classList.remove('dark');
     }
