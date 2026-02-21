@@ -135,7 +135,7 @@ def get_session_store() -> SessionStore:
     global _store
 
     if _store is None:
-        if settings.environment.value == 'production':
+        if settings.environment.value == 'prod':
             _store = RedisSessionStore(settings.redis_url, settings.session_ttl)
         else:
             _store = InMemorySessionStore()

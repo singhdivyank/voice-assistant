@@ -16,20 +16,20 @@ docjarvis/
 │   │   │   ├── routes/
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── diagnosis.py
-│   │   │   │   └── prescription.py
 │   │   │   │   ├── sessions.py
+│   │   │   │   └── prescription.py
 │   │   │   ├── schemas/         # Pydantic models
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── diagnosis.py
 │   │   │   │   ├── patient.py
-│   │   │   │   ├── session.py
+│   │   │   │   └── session.py
 │   │   │   └── middleware/
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── error_handler.py
 │   │   │   │   └── logging.py
 │   │   ├── config/
 │   │   │   ├── __init__.py
-│   │   │   └── monitoring.py
+│   │   │   ├── monitoring.py
 │   │   │   └── settings.py
 │   │   ├── core/                
 │   │   │   ├── __init__.py
@@ -81,17 +81,17 @@ docjarvis/
 │   │   │   ├── speech/
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── SpeechControls.tsx
-│   │   │   |   └── VoiceInput.tsx
-│   │   │   ├── ui/              # Reusable UI components
-│   │   │   │   ├── Alert.tsx
-│   │   │   │   ├── Button.tsx
-│   │   │   │   ├── Card.tsx
-│   │   │   │   ├── Input.tsx
-│   │   │   │   ├── index.ts
-│   │   │   │   ├── ProgressBar.tsx
-│   │   │   │   ├── Select.tsx
-│   │   │   │   ├── Spinner.tsx
-│   │   │   |   └── TextArea.tsx
+│   │   │   |   └── VoiceInput.tsx              
+│   │   │   └── ui/ # Reusable UI components
+│   │   │       ├── Alert.tsx
+│   │   │       ├── Button.tsx
+│   │   │       ├── Card.tsx
+│   │   │       ├── Input.tsx
+│   │   │       ├── index.ts
+│   │   │       ├── ProgressBar.tsx
+│   │   │       ├── Select.tsx
+│   │   │       ├── Spinner.tsx
+│   │   │       └── TextArea.tsx
 │   │   ├── hooks/
 │   │   │   ├── index.ts
 │   │   │   ├── useConsultation.ts
@@ -116,6 +116,7 @@ docjarvis/
 │   ├── index.html
 │   ├── nginx.conf
 │   ├── package.json
+|   ├── package-lock.json
 │   ├── tailwind.config.js
 │   ├── tsconfig.json
 │   ├── tsconfig.node.json
@@ -128,7 +129,6 @@ docjarvis/
 ├── .pylintrc
 ├── docker-compose.yml
 ├── otel-config.yml
-├── package-lock.json
 ├── package.json
 └── README.md
 ```

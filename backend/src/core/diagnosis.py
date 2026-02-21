@@ -43,7 +43,8 @@ class DiagnosisEngine:
             callbacks.append(LangChainTracer(project_name=settings.langsmith_project))
 
         self.llm = ChatGoogleGenerativeAI(
-            name=settings.gemini_model,
+            name=settings.name,
+            model=settings.gemini_model,
             temperature=settings.llm_temperature,
             max_output_tokens=settings.llm_max_tokens,
             convert_system_message_to_human=True,

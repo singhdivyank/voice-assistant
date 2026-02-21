@@ -147,7 +147,7 @@ class LangSmithManager:
     
     def __init__(self):
         self.client: Optional[LangSmithClient] = None
-        self.embed = bool(settings.langsmith_api_key and settings.langsmith_tracing)
+        self.enabled = bool(settings.langsmith_api_key and settings.langsmith_tracing)
     
     def initialize(self) -> None:
         """Initialize LangSmith client."""
@@ -156,7 +156,7 @@ class LangSmithManager:
             logger.info("LangSmith tracing disabled")
             return 
         
-        os.environ["LANGCHAIN_TRACING_V2"] = True
+        os.environ["LANGCHAIN_TRACING_V2"] = "true"
         os.environ["LANGCHAIN_API_KEY"] = settings.langsmith_api_key
         os.environ["LANGCHAIN_PROJECT"] = settings.langsmith_project
         logger.info(f"LangSmith initialized for project: {settings.langsmith_project}")
@@ -165,7 +165,7 @@ class LangSmithManager:
         """Decorator for tracing LLM calls."""
 
         def decorator(func: Callable) -> Callable:
-            if not self.embed:
+            if not self.enabled:
                 return func
             return traceable(name=name, run_type="llm")(func)
         return decorator

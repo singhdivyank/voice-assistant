@@ -8,12 +8,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
 
-from src.config.settings import Gender
-
 class Environment(str, Enum):
-    DEVELOPMENT = "dev"
+    DEV = "dev"
     STAGING = "staging"
-    PRODUCTION = "prod"
+    PROD = "prod"
 
 
 class Gender(str, Enum):

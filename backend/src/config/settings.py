@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     # Application
     app_name: str = "DocJarvis"
     app_version: str = "2.0.0"
-    environment: Environment = Environment.DEVELOPMENT
+    environment: Environment = Environment.DEV
     debug: bool = Field(default=True)
 
     # Server
@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     prescription_dir: Path = Field(default_factory=lambda: Path("outputs/prescriptions"))
 
     # LLM Configurations
+    name: str = "DocJarvis-llm"
     google_api_key: str = Field(default="", alias="GOOGLE_API_KEY")
     gemini_model: str = "gemini-pro"
     llm_temperature: float = 0.2

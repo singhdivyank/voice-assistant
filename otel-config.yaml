@@ -20,7 +20,7 @@ processors:
   attributes:
     actions:
       - key: environment
-        value: development
+        value: dev
         action: upsert
       - key: service.namespace
         value: docjarvis
@@ -28,8 +28,8 @@ processors:
 
 exporters:
   # Console exporter for debugging
-  logging:
-    loglevel: info
+  debug:
+    verbosity: detailed
 
   # OTLP exporter (for forwarding to other backends)
   otlp:
@@ -51,14 +51,14 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch, attributes]
-      exporters: [logging, jaeger]
+      exporters: [debug, jaeger]
     
     metrics:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [logging, prometheus]
+      processors: [memory_limiter, batch, attributes]
+      exporters: [debug]
     
     logs:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [logging]
+      processors: [memory_limiter, batch, attributes]
+      exporters: [debug]
