@@ -13,11 +13,11 @@ const containerSizes = {
     xl: 'max-w-6xl',
 };
 
-export const Container: React.FC<ContainerProps> = (
+export const Container: React.FC<ContainerProps> = ({
     children,
     size = 'lg',
     className = '',
-) => {
+}) => {
     return (
         <div className={`${containerSizes[size]} mx-auto px-4 ${className}`}>
             {children}
