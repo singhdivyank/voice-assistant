@@ -1,10 +1,6 @@
 import React from 'react';
 import { Activity } from 'lucide-react';
-
-interface HeaderProps {
-    onSettingsClick?: () => void;
-    onHelpClick?: () => void;
-};
+import { HeaderProps } from '@/utils/constants';
 
 export const Header: React.FC<HeaderProps> = () => {
     return (

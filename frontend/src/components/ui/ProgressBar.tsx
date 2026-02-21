@@ -1,18 +1,6 @@
 import React from 'react';
 
-interface ProgressBarProps {
-  value: number;
-  max?: number;
-  showLabel?: boolean;
-  size?: 'sm' | 'md' | 'lg';
-  className?: string;
-}
-
-const progressSizes = {
-  sm: 'h-1',
-  md: 'h-2',
-  lg: 'h-3',
-};
+import { progressSizes, ProgressBarProps } from '@/utils';
 
 export const ProgressBar: React.FC<ProgressBarProps> = ({
   value,

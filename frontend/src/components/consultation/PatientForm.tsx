@@ -1,63 +1,71 @@
 import React from 'react';
+import { Mic } from 'lucide-react';
 import { useConsultationStore } from '../../store/consultationStore';
-import { LANGUAGES, GENDERS, Gender, Language } from '../../api/types';
+import { GENDERS, Gender } from '../../api/types';
+import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
 
 export const PatientForm: React.FC = () => {
-    const { patientData, setPatientData, setPhase } = useConsultationStore();
-
+    const { patientData, setPatientData, startVoiceConsultation, isLoading, error } = useConsultationStore();
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        setPhase('complaint');
+        startVoiceConsultation();
     };
 
-    return (
-        <form onSubmit={handleSubmit} className="space-y-6 max-w-md mx-auto">
-            <h2 className="text-2xl font-semibold text-gray-800">Patient Information</h2>
+    const genderOptions = Object.entries(GENDERS).map(([value, label]) => ({
+        value,
+        label
+    }));
 
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
-                <input
+    return (
+        <div className="space-y-6 max-w-md mx-auto">
+            <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Mic className="w-8 h-8 text-blue-600" />
+                </div>
+                <h2 className="text-2xl font-semibold text-gray-800">DocJarvis Voice Consultation</h2>
+                <p className="text-gray-600 mt-2">
+                    Enter your basic information to begin voice-guided medical consultation
+                </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <Input
+                    label="Age"
                     type="number"
                     min={1}
                     max={120}
-                    value={patientData.age}
-                    onChange={(e) => setPatientData({ age: parseInt(e.target.value) || 30})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={patientData.age.toString()}
+                    onChange={(e) => setPatientData({ age: parseInt(e.target.value) || 1 })}
+                    required
                 />
-            </div>
-
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
-                <select 
+                <Select
+                    label="Gender"
+                    options={genderOptions}
                     value={patientData.gender}
-                    onChange={(e) => setPatientData({  gender: e.target.value as Gender })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500"
+                    onChange={(value) => setPatientData({ gender: value as Gender })}
+                />
+                {error && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                        {error}
+                    </div>
+                )}
+                <Button
+                    type="submit"
+                    fullWidth
+                    size="lg"
+                    isLoading={isLoading}
+                    leftIcon={<Mic className="w-5 h-5" />}
+                    className="mt-6"
                 >
-                    {Object.entries(GENDERS).map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
-                    ))}
-                </select>
-            </div>
+                    {isLoading ? 'Starting...' : 'Begin Voice Consultation'}
+                </Button>
+            </form>
 
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
-                <select 
-                    value={patientData.language}
-                    onChange={(e) => setPatientData({  language: e.target.value as Language })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus: ring-2 focus:ring-blue-500"
-                >
-                    {Object.entries(LANGUAGES).map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
-                    ))}
-                </select>
+            <div className="text-center text-sm text-gray-500 mt-6">
+                <p>Make sure your microphone is enabled for the best experience</p>
             </div>
-
-            <button 
-                type="submit" 
-                className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-            >
-                Continue
-            </button>
-        </form>
+        </div>
     );
 };
