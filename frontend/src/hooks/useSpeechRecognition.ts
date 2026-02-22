@@ -1,44 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-
-interface SpeechRecognitionOptions {
-    language?: string;
-    continuous?: boolean;
-    onResult?: (transcript: string, isFinal: boolean) => void;
-    onError?: (error: string) => void;
-    onEnd?: () => void;
-}
-
-interface speechRecognitionHook {
-    isListening: boolean;
-    isSupported: boolean;
-    transcript: string;
-    startListening: () => void;
-    stopListening: () => void;
-    resetTranscript: () => void;
-}
-
-interface SpeechRecognitionEvent extends Event {
-    results: SpeechRecognitionResultList;
-    resultIndex: number;
-}
-
-interface SpeechRecognitionResultList {
-    length: number;
-    item(index: number): SpeechRecognitionResult;
-    [index: number]: SpeechRecognitionResult;
-}
-
-interface SpeechRecognitionResult {
-    isFinal: boolean;
-    length: number;
-    item(index: number): SpeechRecognitionAlternative;
-    [index: number]: SpeechRecognitionAlternative;
-}
-
-interface SpeechRecognitionAlternative {
-    transcript: string;
-    confidence: number;
-}
+import { SpeechRecognitionEvent, speechRecognitionHook, SpeechRecognitionOptions } from '@utils/constants';
 
 export const useSpeechRecognition = (options: SpeechRecognitionOptions = {}): speechRecognitionHook => {
     const {
@@ -53,16 +14,39 @@ export const useSpeechRecognition = (options: SpeechRecognitionOptions = {}): sp
     const [transcript, setTranscript] = useState('');
     const recognitionRef = useRef<any>(null);
 
-    const isSupported = typeof window != 'undefined' && 'speechRecognition' in window;
+    const isSupported = 
+        typeof window != 'undefined' && (
+            'webkitSpeechRecognition' in window ||
+            'speechRecognition' in window
+        ) && 
+        (
+            location.protocol === 'https:' ||
+            location.hostname === 'localhost' ||
+            location.hostname === '127.0.0.1'
+        );
     useEffect(() => {
-        if (!isSupported) return;
+        if (!isSupported) {
+            console.warn('Speech recognition not supported. Requirements:');
+            console.warn('1. HTTPS connection (or localhost)');
+            console.warn('2. Modern browser (Chrome, Edge, Safari)');
+            console.warn('3. Microphone permissions');
+            return;
+        };
 
-        const SpeechRecognition = (window as any).SpeechRecognition;
+        const SpeechRecognition = 
+            (window as any).webkitSpeechRecognition ||
+            (window as any).SpeechRecognition;
+        
         recognitionRef.current = new SpeechRecognition();
 
         const recognition = recognitionRef.current;
         recognition.continuous = continuous;
         recognition.language = language;
+        recognition.interimResults = true;
+
+        recognition.onstart = () => {
+            console.log('Speech recognition started');
+        };
 
         recognition.onResult = (event: SpeechRecognitionEvent) => {
             let transcript = '';
@@ -88,33 +72,54 @@ export const useSpeechRecognition = (options: SpeechRecognitionOptions = {}): sp
                 'audio-capture': 'Microphone not available.',
                 'not-allowed': 'Microphone permission denied.',
                 'network': 'Network error occurred.',
+                'aborted': 'Speech recognition was aborted.',
+                'service-not-allowed': 'Speech service not allowed. Make sure you\'re using HTTPS.',
             };
-            onError?.(errorMessages[event.error] || `Error: ${event.error}`);
+            
+            const errorMessage = errorMessages[event.error] || `Speech recognition error: ${event.error}`;
+            onError?.(errorMessage);
             setIsListening(false);
         };
 
         recognition.onend = () => {
+            console.log('Speech recognition ended');
             setIsListening(false);
             onEnd?.();
         };
 
         return () => {
-            recognition.abort();
+            if (recognition) {
+                recognition.abort();
+            }
         };
     }, [isSupported, language, continuous, onResult, onError, onEnd]);
 
     const startListening = useCallback(() => {
-        if (!isSupported || !recognitionRef.current) return;
+        if (!isSupported) {
+            onError?.(`Speech recognition not supported. Please use HTTPS and a modern browser.`);
+            return;
+        }
+        
+        if (!recognitionRef.current) {
+            onError?.(`Speech recognition not initialized.`);
+            return;
+        }
         
         setTranscript('');
         setIsListening(true);
-        recognitionRef.current.start();
+        try {
+            recognitionRef.current.start();
+        } catch (error) {
+            console.error('Failed to start speech recognition:', error);
+            onError?.('Failed to start speech recognition.');
+            setIsListening(false);
+        }
     }, [isSupported]);
 
     const stopListening = useCallback(() => {
-        if (!recognitionRef.current) return;
-
-        recognitionRef.current.stop();
+        if (!recognitionRef.current) {
+            recognitionRef.current.stop();
+        }
         setIsListening(false);
     }, []);
 

@@ -77,7 +77,7 @@ class DiagnosisEngine:
             with telemetry.span("llm_diagnosis_questions", {"complaint_length": len(complaint)}):
                 chain = self.diagnosis_prompt | self.llm
                 response = chain.invoke({"input": complaint})
-                questions = self._parse_questions(response.content.split())
+                questions = self._parse_questions(response.content)
                 logger.info("Generated %d diagnostic questions", len(questions))
                 return questions
         except Exception as e:
@@ -130,13 +130,19 @@ class DiagnosisEngine:
     def _parse_questions(self, response: str) -> list[str]:
         """Parse questions from LLM resposne."""
         
-        lines = response.split("\n")
         questions = []
-
-        for line in lines:
+        
+        if not isinstance(response, str):
+            logger.error(f"Expected string response, got {type(response)}: {response}")
+            return ["Please describe your main symptoms"]
+        
+        for line in response.split("\n"):
             cleaned = re.sub(r"^\d+[\.\)]\s*", "", line.strip())
             if cleaned and len(cleaned) > 10:
                 questions.append(cleaned)
+        
+        if not questions:
+            return ["Please describe your main symptoms"]
 
         return questions[:3]
 

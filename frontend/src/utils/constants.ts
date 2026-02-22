@@ -149,3 +149,47 @@ export interface ConversationTurn {
 export interface ConversationDisplayProps {
   conversations: ConversationTurn[]
 }
+
+export interface SpeechSynthesisOptions {
+    language?: string;
+    pitch?: number;
+    rate?: number;
+    volume?: number;
+    voice?: string;
+    onStart?: () => void;
+    onEnd?: () => void;
+    onError?: (error: string) => void;
+}
+
+export interface SpeechSynthesisHook {
+    isSupported: boolean;
+    isSpeaking: boolean;
+    isPaused: boolean;
+    voices: SpeechSynthesisVoice[];
+    speak: (text: string) => void;
+    pause: () => void;
+    resume: () => void;
+    cancel: () => void;
+}
+
+export interface SpeechRecognitionOptions {
+    language?: string;
+    continuous?: boolean;
+    onResult?: (transcript: string, isFinal: boolean) => void;
+    onError?: (error: string) => void;
+    onEnd?: () => void;
+}
+
+export interface speechRecognitionHook {
+    isListening: boolean;
+    isSupported: boolean;
+    transcript: string;
+    startListening: () => void;
+    stopListening: () => void;
+    resetTranscript: () => void;
+}
+
+export interface SpeechRecognitionEvent extends Event {
+    results: SpeechRecognitionResultList;
+    resultIndex: number;
+}

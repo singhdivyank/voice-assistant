@@ -3,7 +3,7 @@ import { Mic, Brain, Volume2, MicOff } from 'lucide-react';
 import { useConsultationStore } from '../../store/consultationStore';
 import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
 import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
-import { ConversationDisplay } from './ConversationDisplay';
+import { ConversationDisplay } from './ConservationDisplay';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Spinner } from '../ui/Spinner';

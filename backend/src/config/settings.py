@@ -40,22 +40,22 @@ class Settings(BaseSettings):
     # LLM Configurations
     name: str = "DocJarvis-llm"
     google_api_key: str = Field(default="", alias="GOOGLE_API_KEY")
-    gemini_model: str = "gemini-pro"
+    gemini_model: str = "gemini-2.5-flash"
     llm_temperature: float = 0.2
     llm_max_tokens: int = 2048
 
     # LangSmith monitoring
     langsmith_api_key: Optional[str] = Field(default=None, alias="LANGSMITH_API_KEY")
-    langsmith_project: str = "docjarvis"
+    langsmith_project: str = Field(default="", alias="LANGSMITH_PROJECT")
     langsmith_tracing: bool = True
 
     # OpenTelemetry
-    otel_service_name: str = "docjarvis-backend"
-    otel_exporter_endpoint: str = "http://localhost:4317"
+    otel_service_name: str = Field(default="", alias="OTEL_SERVICE_NAME")
+    otel_exporter_endpoint: str = Field(default="", alias="OTEL_EXPORTER_ENDPOINT")
     otel_enabled: bool = True
 
     # Redis
-    redis_url: str = "redis://localhost:6379/0"
+    redis_url: str = Field(default="", alias="REDIS_URL")
     session_ttl: int = 3600
 
     def setup_dir(self) -> None:

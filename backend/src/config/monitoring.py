@@ -1,6 +1,6 @@
 """Monitoring setup with OpenTelemetry and LangSmith"""
 
-import asyncio
+import inspect
 import logging
 import os
 from contextlib import contextmanager
@@ -123,9 +123,9 @@ class TelemetryManager:
 
         if not self.tracer:
             yield None
-        else:
-            with self.tracer.start_as_current_span(name, attributes=attributes) as span:
-                yield span
+        
+        with self.tracer.start_as_current_span(name, attributes=attributes) as span:
+            yield span
     
     def instrument_fastapi(self, app) -> None:
         """Instrument FastAPI application."""
@@ -148,6 +148,7 @@ class LangSmithManager:
     def __init__(self):
         self.client: Optional[LangSmithClient] = None
         self.enabled = bool(settings.langsmith_api_key and settings.langsmith_tracing)
+        self.initialize()
     
     def initialize(self) -> None:
         """Initialize LangSmith client."""
@@ -214,7 +215,7 @@ def timed_operation(operation_name: str):
                 telemetry.increment_counter("llm_errors", attributes={"operation": operation_name})
                 raise
         
-        if asyncio.iscoroutinefunction(func=func):
+        if inspect.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper
     
