@@ -1,15 +1,8 @@
 import React from 'react';
 import { Volume2, VolumeX, Play, Pause} from 'lucide-react';
-import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
-import { Button } from '../ui/Button';
-
-interface SpeechControlProps {
-    text: string;
-    language?: string;
-    autoPlay?: boolean;
-    onStart?: () => void;
-    onEnd?: () => void;
-}
+import { useSpeechSynthesis } from '@/hooks/';
+import { Button } from '../ui/';
+import { SpeechControlProps } from '@/utils/';
 
 export const SpeechControls: React.FC<SpeechControlProps> = ({
     text,

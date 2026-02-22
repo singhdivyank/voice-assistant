@@ -1,26 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-
-interface SpeechSynthesisOptions {
-    language?: string;
-    pitch?: number;
-    rate?: number;
-    volume?: number;
-    voice?: string;
-    onStart?: () => void;
-    onEnd?: () => void;
-    onError?: (error: string) => void;
-}
-
-interface SpeechSynthesisHook {
-    isSupported: boolean;
-    isSpeaking: boolean;
-    isPaused: boolean;
-    voices: SpeechSynthesisVoice[];
-    speak: (text: string) => void;
-    pause: () => void;
-    resume: () => void;
-    cancel: () => void;
-}
+import { SpeechSynthesisOptions, SpeechSynthesisHook } from '@utils/constants';
 
 export const useSpeechSynthesis = (options: SpeechSynthesisOptions = {}): SpeechSynthesisHook => {
     const {

@@ -1,5 +1,3 @@
 export { PatientForm } from './PatientForm';
-export { ComplaintInput } from './ComplaintInput';
-export { QuestionAnswer } from './QuestionAnswer';
-export { DiagnosisView } from './DiagnosisView';
-export { PrescriptionCard } from './PrescriptionCard';
+export { ConversationDisplay } from './ConversationDisplay';
+export { VoiceConsultation } from './VoiceConsultation';

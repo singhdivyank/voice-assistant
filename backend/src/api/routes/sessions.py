@@ -15,7 +15,7 @@ from src.core.prescription import PrescriptionService
 from src.config.settings import get_settings
 from src.config.monitoring import telemetry
 from src.services.session_store import SessionStore, get_session_store
-from src.utils.consts import Gender, Language
+from src.utils.consts import Gender
 
 
 logger = logging.getLogger(__name__)
@@ -39,12 +39,10 @@ async def create_session(
             age=request.patient_age,
             gender=Gender.from_string(request.patient_gender)
         )
-        prescription = PrescriptionService()
         session = diagnosis_service.create_session(
             session_id=session_id,
             patient=patient,
             complaint=request.initial_complaint,
-            prescription=prescription
         )
 
         await store.save(session)
@@ -73,12 +71,18 @@ async def get_session(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     
+    prescription_path = None
+    if session.status == "completed":
+        prescription_file_path = settings.prescription_dir / f"prescription_{session_id}.txt"
+        if prescription_file_path.exists():
+            prescription_path = str(prescription_path)
+    
     return SessionState(
         session_id=session.session_id,
         status=session.status,
         patient_age=session.patient.age,
         patient_gender=session.patient.gender.value,
-        language="en", # TODO: store language in session
+        language=getattr(session, 'language', 'en'),
         initial_complaint=session.initial_complaint,
         questions=session.questions,
         conversation=[
@@ -87,7 +91,7 @@ async def get_session(
         ],
         current_question_idx=session.current_question_index,
         medication=session.medication,
-        prescription_path=None #TODO
+        prescription_path=prescription_path
     )
 
 @router.post("/{session_id}/answer")

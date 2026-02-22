@@ -33,6 +33,7 @@ class DiagnosisEngine:
 
     def configure_api(self) -> None:
         """Configure the Google Generative AI API"""
+        settings = get_settings()
         genai.configure(api_key=settings.google_api_key)
 
     def create_llm(self) -> None:
@@ -45,6 +46,7 @@ class DiagnosisEngine:
         self.llm = ChatGoogleGenerativeAI(
             name=settings.name,
             model=settings.gemini_model,
+            google_api_key=settings.google_api_key,
             temperature=settings.llm_temperature,
             max_output_tokens=settings.llm_max_tokens,
             convert_system_message_to_human=True,
@@ -75,7 +77,7 @@ class DiagnosisEngine:
             with telemetry.span("llm_diagnosis_questions", {"complaint_length": len(complaint)}):
                 chain = self.diagnosis_prompt | self.llm
                 response = chain.invoke({"input": complaint})
-                questions = self._parse_questions(response.content.split())
+                questions = self._parse_questions(response.content)
                 logger.info("Generated %d diagnostic questions", len(questions))
                 return questions
         except Exception as e:
@@ -128,13 +130,19 @@ class DiagnosisEngine:
     def _parse_questions(self, response: str) -> list[str]:
         """Parse questions from LLM resposne."""
         
-        lines = response.split("\n")
         questions = []
-
-        for line in lines:
+        
+        if not isinstance(response, str):
+            logger.error(f"Expected string response, got {type(response)}: {response}")
+            return ["Please describe your main symptoms"]
+        
+        for line in response.split("\n"):
             cleaned = re.sub(r"^\d+[\.\)]\s*", "", line.strip())
             if cleaned and len(cleaned) > 10:
                 questions.append(cleaned)
+        
+        if not questions:
+            return ["Please describe your main symptoms"]
 
         return questions[:3]
 

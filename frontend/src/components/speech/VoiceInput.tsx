@@ -1,15 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { Mic, Square } from 'lucide-react';
-import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
-import { Button } from '../ui/Button';
-
-interface VoiceInputProps {
-    onTranscript: (text: string) => void;
-    onError?: (error: string) => void;
-    language?: string;
-    placeholder?: string;
-    disabled?: boolean;
-}
+import { useSpeechRecognition } from '@/hooks/';
+import { Button } from '../ui/';
+import { VoiceInputProps } from '@/utils/';
 
 export const VoiceInput: React.FC<VoiceInputProps> = ({
     onTranscript,

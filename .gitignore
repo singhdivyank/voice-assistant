@@ -69,5 +69,8 @@ Thumbs.db
 # Jupyter
 .ipynb_checkpoints/
 
-# Node
+# Node modules
 node_modules/
+
+# ssl certificates
+*.pem
