@@ -33,6 +33,7 @@ class DiagnosisEngine:
 
     def configure_api(self) -> None:
         """Configure the Google Generative AI API"""
+        settings = get_settings()
         genai.configure(api_key=settings.google_api_key)
 
     def create_llm(self) -> None:
@@ -45,6 +46,7 @@ class DiagnosisEngine:
         self.llm = ChatGoogleGenerativeAI(
             name=settings.name,
             model=settings.gemini_model,
+            google_api_key=settings.google_api_key,
             temperature=settings.llm_temperature,
             max_output_tokens=settings.llm_max_tokens,
             convert_system_message_to_human=True,

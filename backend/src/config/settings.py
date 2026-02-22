@@ -4,7 +4,7 @@ from pathlib import Path
 from functools import lru_cache
 from typing import Optional
 
-from pydantic import Field
+from pydantic import Field, ConfigDict
 from pydantic_settings import BaseSettings
 
 from src.utils.consts import Environment
@@ -12,6 +12,13 @@ from src.utils.consts import Environment
 
 class Settings(BaseSettings):
     """Main application settings"""
+
+    model_config = ConfigDict(
+        env_file=Path(__file__).parent.parent.parent.parent / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
+    )
 
     # Application
     app_name: str = "DocJarvis"
@@ -50,14 +57,6 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str = "redis://localhost:6379/0"
     session_ttl: int = 3600
-
-    
-    class Config:
-        """Pydantic configuration"""
-
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        extra = "ignore"
 
     def setup_dir(self) -> None:
         """Create necessary dictionaries"""
