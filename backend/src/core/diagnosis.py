@@ -175,19 +175,19 @@ class DiagnosisService:
     def add_response(
         self, 
         session: DiagnosisSession, 
-        question_idx: int, 
+        question_index: int, 
         answer: str
     ) -> None:
         """Add a patient's response to a diagnostic question."""
 
-        if question_idx < len(session.questions):
+        if question_index < len(session.questions):
             session.conversation.append(
                 ConversationTurn(
-                    question=session.questions[question_idx], 
+                    question=session.questions[question_index], 
                     answer=answer
                 )
             )
-            session.current_question_index = question_idx + 1
+            session.current_question_index = question_index + 1
 
     def complete_session(self, session: DiagnosisSession) -> str:
         """Complete the diagnosis and generate recommendations."""

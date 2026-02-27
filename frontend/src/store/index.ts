@@ -1,1 +1,0 @@
-export { useConsultationStore } from './consultationStore';

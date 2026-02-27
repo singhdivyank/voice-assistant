@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { SpeechRecognitionEvent, speechRecognitionHook, SpeechRecognitionOptions } from '@utils/constants';
+import { errorMessages, SpeechRecognitionEvent, speechRecognitionHook, SpeechRecognitionOptions } from '@/utils/';
 
 export const useSpeechRecognition = (options: SpeechRecognitionOptions = {}): speechRecognitionHook => {
     const {
@@ -18,11 +18,6 @@ export const useSpeechRecognition = (options: SpeechRecognitionOptions = {}): sp
         typeof window != 'undefined' && (
             'webkitSpeechRecognition' in window ||
             'speechRecognition' in window
-        ) && 
-        (
-            location.protocol === 'https:' ||
-            location.hostname === 'localhost' ||
-            location.hostname === '127.0.0.1'
         );
     useEffect(() => {
         if (!isSupported) {
@@ -46,10 +41,11 @@ export const useSpeechRecognition = (options: SpeechRecognitionOptions = {}): sp
 
         recognition.onstart = () => {
             console.log('Speech recognition started');
+            setIsListening(true);
         };
 
         recognition.onResult = (event: SpeechRecognitionEvent) => {
-            let transcript = '';
+            let finalTranscript = '';
             let interimTranscript = '';
 
             for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -57,27 +53,23 @@ export const useSpeechRecognition = (options: SpeechRecognitionOptions = {}): sp
                 if (!result.isFinal) {
                     interimTranscript += result[0].transcript;
                 } else {
-                    transcript += result[0].transcript;
+                    finalTranscript += result[0].transcript;
                 }
             }
 
-            const currTranscript = transcript || interimTranscript;
+            const currTranscript = finalTranscript || interimTranscript;
             setTranscript(currTranscript);
-            onResult?.(currTranscript, !!transcript);
+
+            if (onResult) {
+                onResult(currTranscript, !!finalTranscript);
+            }
         };
 
-        recognition.onrrror = (event: any) => {
-            const errorMessages: Record<string, string> = {
-                'no-speech': 'No speech detected. Please try again.',
-                'audio-capture': 'Microphone not available.',
-                'not-allowed': 'Microphone permission denied.',
-                'network': 'Network error occurred.',
-                'aborted': 'Speech recognition was aborted.',
-                'service-not-allowed': 'Speech service not allowed. Make sure you\'re using HTTPS.',
-            };
-            
-            const errorMessage = errorMessages[event.error] || `Speech recognition error: ${event.error}`;
-            onError?.(errorMessage);
+        recognition.onerror = (event: any) => {
+            if (event.error !== 'aborted') {
+                const errorMessage = errorMessages[event.error] || `Speech recognition error: ${event.error}`;
+                onError?.(errorMessage);
+            }
             setIsListening(false);
         };
 
@@ -95,18 +87,13 @@ export const useSpeechRecognition = (options: SpeechRecognitionOptions = {}): sp
     }, [isSupported, language, continuous, onResult, onError, onEnd]);
 
     const startListening = useCallback(() => {
-        if (!isSupported) {
+        if (!isSupported || !recognitionRef.current) {
             onError?.(`Speech recognition not supported. Please use HTTPS and a modern browser.`);
             return;
         }
         
-        if (!recognitionRef.current) {
-            onError?.(`Speech recognition not initialized.`);
-            return;
-        }
-        
+        console.log('Starting to listen');
         setTranscript('');
-        setIsListening(true);
         try {
             recognitionRef.current.start();
         } catch (error) {
@@ -114,14 +101,18 @@ export const useSpeechRecognition = (options: SpeechRecognitionOptions = {}): sp
             onError?.('Failed to start speech recognition.');
             setIsListening(false);
         }
-    }, [isSupported]);
+    }, [isSupported, onError]);
 
     const stopListening = useCallback(() => {
-        if (!recognitionRef.current) {
-            recognitionRef.current.stop();
+        if (recognitionRef.current && isListening) {
+            console.log('Stopping listening ...');
+            try {
+                recognitionRef.current.stop();
+            } catch (error) {
+                console.log('Error stopping recognition: ', error);
+            }
         }
-        setIsListening(false);
-    }, []);
+    }, [isListening]);
 
     const resetTranscript = useCallback(() => {
         setTranscript('');

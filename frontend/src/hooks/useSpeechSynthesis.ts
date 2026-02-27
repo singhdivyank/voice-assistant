@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { SpeechSynthesisOptions, SpeechSynthesisHook } from '@utils/constants';
+import { SpeechSynthesisOptions, SpeechSynthesisHook } from '@/utils/';
 
 export const useSpeechSynthesis = (options: SpeechSynthesisOptions = {}): SpeechSynthesisHook => {
     const {

@@ -27,11 +27,9 @@ processors:
         action: upsert
 
 exporters:
-  # Console exporter for debugging
   debug:
     verbosity: detailed
 
-  # OTLP exporter (for forwarding to other backends)
   otlp:
     endpoint: jaeger:4317
     tls:

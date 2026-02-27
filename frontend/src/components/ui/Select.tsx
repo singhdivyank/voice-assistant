@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { SelectOption } from '@/utils';
+import { SelectOption } from '@/utils/';
 
 interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'onChange'> {
   label?: string;

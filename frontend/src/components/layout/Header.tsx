@@ -1,6 +1,6 @@
 import React from 'react';
 import { Activity } from 'lucide-react';
-import { HeaderProps } from '@/utils/constants';
+import { HeaderProps } from '@/utils/';
 
 export const Header: React.FC<HeaderProps> = () => {
     return (

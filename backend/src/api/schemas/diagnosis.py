@@ -30,7 +30,8 @@ class MedicationResponse(BaseModel):
 
     session_id: str
     medication: str
-    disclaimer: str = "This is AI-generated advice, please conuslt physician"
+    medication_english: Optional[str] = None
+    disclaimer: str = "This is AI-generated advice, please consult physician"
 
 
 class PrescriptionResponse(BaseModel):

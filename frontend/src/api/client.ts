@@ -2,13 +2,9 @@
  * API client for DocJarvis backend
 */
 
-import {
-    SessionCreate, SessionResponse, SessionState,
+import { API_BASE_URL, SessionCreate, SessionResponse, SessionState,
     AnswerSubmit, MedicationResponse, PrescriptionResponse,
-    DiagnosisQuestion, ApiError
-} from './types';
-
-const API_BASE_URL = import .meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+    DiagnosisQuestion, ApiError } from '@/utils/';
 
 class ApiClient {
     private baseUrl: string;
@@ -69,7 +65,10 @@ class ApiClient {
     }>{
         return this.request(`/sessions/${sessionId}/answer`, {
             method: 'POST',
-            body: JSON.stringify(data),
+            body: JSON.stringify({
+                question_index: data.question_index,
+                answer: data.answer,
+            }),
         });
     }
 
@@ -83,14 +82,15 @@ class ApiClient {
         sessionId: string,
         onChunk: (chunk: string) => void,
         onComplete: () => void,
-        onError: (error: Error) => void
+        onError: (error: Error) => void,
+        onEnglishParaphrase?: (medicationEnglish: string) => void
     ): Promise<void> {
         const url = `${this.baseUrl}/sessions/${sessionId}/complete/stream`;
 
         try {
             const response = await fetch(url, { method: 'POST' });
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`)
+                throw new Error(`HTTP ${response.status}`);
             }
 
             const reader = response.body?.getReader();
@@ -101,21 +101,27 @@ class ApiClient {
             const decoder = new TextDecoder();
 
             while (true) {
-                const {  done, value } = await reader.read();
+                const { done, value } = await reader.read();
                 if (done) break;
 
-                const text = decoder.decode(value);
-                const lines = text.split('\n');
-
+                const lines = decoder.decode(value).split('\n');
                 for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const data = line.slice(6)
-                        if (data == '[DONE]') {
-                            onComplete();
-                            return;
-                        }
-                        onChunk(data);
+                    if (!line.startsWith('data: ')) continue;
+                    const data = line.slice(6);
+                    if (data === '[DONE]') {
+                        onComplete();
+                        return;
                     }
+                    try {
+                        const parsed = JSON.parse(data) as { medication_english?: string };
+                        if (parsed?.medication_english != null && onEnglishParaphrase) {
+                            onEnglishParaphrase(parsed.medication_english);
+                            continue;
+                        }
+                    } catch {
+                        // not JSON, treat as text chunk
+                    }
+                    onChunk(data);
                 }
             }
 
