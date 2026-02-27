@@ -11,7 +11,7 @@ class SessionCreate(BaseModel):
     patient_age: int = Field(..., ge=1, le=90)
     patient_gender: str = Field(default="other")
     language: str = Field(default="en")
-    initial_complaint: str = Field(..., min_length=5, max_length=2000)
+    initial_complaint: Optional[str] = Field(default="", min_length=0, max_length=2000)
 
 
 class SessionResponse(BaseModel):
@@ -37,7 +37,7 @@ class ConversationTurnSchema(BaseModel):
 class SubmitAnswer(BaseModel):
     """Schema for submitting an answer"""
 
-    question_idx: int = Field(..., ge=0)
+    question_index: int = Field(..., ge=0)
     answer: str = Field(..., min_length=1, max_length=2000)
 
 
@@ -52,6 +52,6 @@ class SessionState(BaseModel):
     initial_complaint: str
     questions: list[str]
     conversation: list[ConversationTurnSchema]
-    current_question_idx: int
+    current_question_index: int
     medication: Optional[str] = None
     prescription_path: Optional[str] = None

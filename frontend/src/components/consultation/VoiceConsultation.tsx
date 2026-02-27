@@ -1,214 +1,300 @@
-import React, { useEffect, useState } from 'react';
-import { Mic, Brain, Volume2, MicOff } from 'lucide-react';
-import { useConsultationStore } from '../../store/consultationStore';
-import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
-import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
-import { ConversationDisplay } from './ConservationDisplay';
-import { Button } from '../ui/Button';
-import { Card } from '../ui/Card';
-import { Spinner } from '../ui/Spinner';
-import { Alert } from '../ui/Alert';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { Mic, MicOff } from 'lucide-react';
+import { ReactMic } from 'react-mic-recorder';
+import toast from 'react-hot-toast';
+import { ConversationPane, PrescriptionPane } from '../consultation/';
+import { Alert, Button } from '../ui/';
+import { useSpeechRecognition, useSpeechSynthesis } from '@/hooks/';
+import { LANGUAGE_MAP, ConversationEntry, useConsultationStore } from '@/utils/';
 
 export const VoiceConsultation: React.FC = () => {
-    const {
-        currentQuestion,
-        isListening,
-        isSpeaking,
-        isProcessing,
-        conversationHistory,
-        streamedMedication,
-        isComplete,
-        submitVoiceAnswer,
-        reset,
-        error
-    } = useConsultationStore();
+  const {
+    currentQuestion,
+    isProcessing,
+    conversationHistory,
+    streamedMedication,
+    streamedMedicationEnglish,
+    isComplete,
+    submitVoiceAnswer,
+    processInitialSymptoms,
+    reset,
+    error,
+    setError,
+    patientData,
+    sessionId,
+  } = useConsultationStore();
 
-    const [userResponse, setUserResponse] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessingAnswer, setIsProcessingAnswer] = useState(false);
+  const [isCollectingInitialSymptoms, setIsCollectingInitialSymptoms] = useState(true);
+  const [questionsGenerated, setQuestionsGenerated] = useState(false);
+  const hasSpokenFirstRef = useRef(false);
+  
+  const getSpeechLang = () => LANGUAGE_MAP[patientData.language] || 'en-US';
+
+  const handleSpeechResult = useCallback((text: string) => {
+    console.log('Speech result:', text);
+  }, []);
+
+  const {
+    transcript,
+    startListening,
+    stopListening,
+    resetTranscript,
+    isSupported,
+  } = useSpeechRecognition({
+    language: getSpeechLang(),
+    continuous: true,
+    onResult: handleSpeechResult,
+    onError: (err) => {
+      toast.error(err);
+      setIsRecording(false);
+    },
+  });
+
+  const { speak, cancel: cancelSpeech } = useSpeechSynthesis({
+    language: getSpeechLang(),
+    rate: 0.9,
+    onEnd: () => {
+      if (currentQuestion && !isComplete && !isProcessing && !isProcessingAnswer) {
+        setTimeout(() => {
+          console.log('Speech ended, ready to start recording');
+        }, 800);
+      }
+    },
+  });
+
+  const handleStartRecording = useCallback(() => {
+    console.log('Starting recording...');
+    resetTranscript();
+    setIsRecording(true);
+    setIsProcessingAnswer(false);
+    startListening();
+  }, [resetTranscript, startListening]);
+
+  const handleStopRecording = useCallback(async () => {
+    console.log('Stop recording clicked');
+    console.log('Transcript:', transcript);
+    console.log('Transcript.length:', transcript.length);
     
-    const { speak, isSpeaking: synthesisSpeaking, cancel: cancelSpeech } = useSpeechSynthesis({
-        language: 'en-US',
-        rate: 0.9,
-        onEnd: () => {
-            if (currentQuestion && !isComplete) {
-                setTimeout(() => {
-                    startListening();
-                }, 1000);
-            }
-        }
-    });
-
-    const {
-        isListening: recognitionListening,
-        transcript,
-        startListening,
-        stopListening,
-        resetTranscript,
-        isSupported
-    } = useSpeechRecognition({
-        language: 'en-US',
-        continuous: false,
-        onResult: (text, isFinal) => {
-            if (isFinal && text.trim()) {
-                setUserResponse(text);
-                handleSubmitAnswer(text);
-            }
-        },
-        onError: (error) => {
-            console.error('Speech recognition error:', error);
-        }
-    });
-
-    // Speak current question when it changes
-    useEffect(() => {
-        if (currentQuestion && !synthesisSpeaking && !isProcessing) {
-            speak(currentQuestion);
-        }
-    }, [currentQuestion, speak, synthesisSpeaking, isProcessing]);
-
-    // Speak final medication recommendations
-    useEffect(() => {
-        if (isComplete && streamedMedication && !synthesisSpeaking) {
-            const introText = "Here are your medical recommendations: ";
-            speak(introText + streamedMedication);
-        }
-    }, [isComplete, streamedMedication, speak, synthesisSpeaking]);
-
-    const handleSubmitAnswer = async (answer: string) => {
-        stopListening();
-        resetTranscript();
-        setUserResponse('');
-        await submitVoiceAnswer(answer);
-    };
-
-    const handleStartListening = () => {
-        if (synthesisSpeaking) {
-            cancelSpeech();
-        }
-        resetTranscript();
-        startListening();
-    };
-
-    const handleNewConsultation = () => {
-        cancelSpeech();
-        stopListening();
-        reset();
-    };
-
-    if (!isSupported) {
-        return (
-            <Alert variant="error" title="Speech Not Supported">
-                Your browser doesn't support speech recognition. Please use Chrome, Edge, or Safari for the voice consultation feature.
-            </Alert>
-        );
+    const text = transcript.trim();
+    console.log('Trimmed text:', text);
+    console.log('Text length:', text.length);
+    stopListening();
+    setIsRecording(false);
+    resetTranscript();
+    
+    if (text.length === 0) {
+      toast.error('No speech detected. Please try again.');
+      return;
     }
 
+    setIsProcessingAnswer(true);
+    setError(null);
+
+    try {
+      if (isCollectingInitialSymptoms) {
+        console.log('Collecting initial symptoms:', text);
+        
+        try {
+          await processInitialSymptoms(text);
+          console.log('Symptoms processed successfully');
+          setIsCollectingInitialSymptoms(false);
+          setQuestionsGenerated(true);
+          toast.success('Questions generated! Starting consultation ...');
+        } catch (err) {
+          throw err;
+        }
+      } else {
+        await submitVoiceAnswer(text);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to process your input';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsProcessingAnswer(false);
+    }
+  }, [transcript, stopListening, resetTranscript, isCollectingInitialSymptoms, speak, submitVoiceAnswer, setError]);
+
+  useEffect(() => {
+    const shouldCollectSymptoms = !currentQuestion && !isComplete && !questionsGenerated;
+    setIsCollectingInitialSymptoms(shouldCollectSymptoms);
+  }, [currentQuestion, isComplete, questionsGenerated]);
+
+  useEffect(() => {
+    if (!isProcessing && isProcessingAnswer) {
+      setIsProcessingAnswer(false);
+    }
+  }, [isProcessing, isProcessingAnswer]);
+
+  useEffect(() => {
+    if (currentQuestion && !hasSpokenFirstRef.current && !isProcessing && !isProcessingAnswer) {
+      console.log('Speaking question:', currentQuestion);
+      hasSpokenFirstRef.current = true;
+      speak(currentQuestion);
+    }
+  }, [currentQuestion, isProcessing, isProcessingAnswer, speak]);
+
+  useEffect(() => {
+    if (isComplete && streamedMedication) {
+      const intro = 'Here are your medical recommendations. ';
+      speak(intro + streamedMedication);
+    }
+  }, [isComplete, streamedMedication, speak]);
+
+  useEffect(() => {
+    if (error) toast.error(error);
+  }, [error]);
+
+  const handleNewConsultation = () => {
+    cancelSpeech();
+    if (isRecording) {
+      stopListening();
+      setIsRecording(false);
+    }
+    reset();
+    hasSpokenFirstRef.current = false;
+    setIsProcessingAnswer(false);
+    setIsCollectingInitialSymptoms(true);
+    setQuestionsGenerated(false);
+  };
+
+  const conversationEntries: ConversationEntry[] = [];
+  
+  if (isCollectingInitialSymptoms) {
+    conversationEntries.push({ 
+      speaker: 'doc', 
+      text: 'Please describe your main symptoms. Take your time and be as detailed as possible.' 
+    });
+  } else {
+    conversationHistory.forEach((turn) => {
+      conversationEntries.push({ speaker: 'doc', text: turn.question });
+      conversationEntries.push({ speaker: 'you', text: turn.answer });
+    });
+    if (currentQuestion && !isComplete) {
+      conversationEntries.push({ speaker: 'doc', text: currentQuestion });
+    }
+  }
+
+  const prescriptionLoading = (isProcessing || isProcessingAnswer) && !currentQuestion && !isComplete;
+  const showProcessing = isProcessingAnswer || (isProcessing && currentQuestion);
+
+  if (!isSupported) {
     return (
-        <div className="space-y-6 max-w-4xl mx-auto">
-            {/* Header */}
-            <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    {isProcessing ? (
-                        <Brain className="w-8 h-8 text-blue-600" />
-                    ) : synthesisSpeaking ? (
-                        <Volume2 className="w-8 h-8 text-blue-600" />
-                    ) : recognitionListening ? (
-                        <Mic className="w-8 h-8 text-red-600 animate-pulse" />
-                    ) : (
-                        <MicOff className="w-8 h-8 text-gray-400" />
-                    )}
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-800">Voice Consultation</h2>
-                <p className="text-gray-600 mt-2">
-                    {isProcessing
-                        ? 'Processing your responses...'
-                        : synthesisSpeaking
-                        ? 'AI is speaking...'
-                        : recognitionListening
-                        ? 'Listening to your response...'
-                        : isComplete
-                        ? 'Consultation complete'
-                        : 'Waiting to begin...'}
-                </p>
-            </div>
-
-            {/* Conversation History */}
-            <ConversationDisplay conversations={conversationHistory} />
-
-            {/* Current Question */}
-            {currentQuestion && !isComplete && (
-                <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-                    <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                            <p className="text-sm font-medium text-blue-600 mb-2">Current Question</p>
-                            <p className="text-lg text-gray-800">{currentQuestion}</p>
-                        </div>
-                    </div>
-                </Card>
-            )}
-
-            {/* Live Transcript */}
-            {recognitionListening && transcript && (
-                <Card className="bg-yellow-50 border-yellow-200">
-                    <p className="text-sm font-medium text-yellow-600 mb-2">You are saying...</p>
-                    <p className="text-gray-800">{transcript}</p>
-                </Card>
-            )}
-
-            {/* Processing State */}
-            {isProcessing && (
-                <Card className="text-center py-12">
-                    <Spinner size="lg" className="mx-auto mb-4" />
-                    <p className="text-gray-600 font-medium">AI is analyzing your responses...</p>
-                    <p className="text-sm text-gray-400 mt-2">This may take a few moments</p>
-                </Card>
-            )}
-
-            {/* Final Recommendations */}
-            {isComplete && streamedMedication && (
-                <Card>
-                    <h3 className="font-semibold text-gray-800 mb-4">Medical Recommendations</h3>
-                    <div className="prose-medication">
-                        <pre className="whitespace-pre-wrap font-sans text-gray-700 leading-relaxed">
-                            {streamedMedication}
-                        </pre>
-                    </div>
-                </Card>
-            )}
-
-            {/* Error Display */}
-            {error && (
-                <Alert variant="error">{error}</Alert>
-            )}
-
-            {/* Control Buttons */}
-            <div className="flex justify-center gap-4">
-                {!isComplete && !isProcessing && currentQuestion && (
-                    <Button
-                        onClick={handleStartListening}
-                        variant={recognitionListening ? 'danger' : 'primary'}
-                        size="lg"
-                        leftIcon={recognitionListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                        disabled={synthesisSpeaking}
-                    >
-                        {recognitionListening ? 'Stop Listening' : 'Start Speaking'}
-                    </Button>
-                )}
-
-                {(isComplete || error) && (
-                    <Button
-                        onClick={handleNewConsultation}
-                        variant="secondary"
-                        size="lg"
-                    >
-                        New Consultation
-                    </Button>
-                )}
-            </div>
-
-            {/* Medical Disclaimer */}
-            <Alert variant="warning" title="Important">
-                This AI consultation is for informational purposes only. Always consult a licensed healthcare provider for medical advice.
-            </Alert>
-        </div>
+      <Alert variant="error" title="Speech Not Supported">
+        Your browser does not support speech recognition. Please use Chrome, Edge, or Safari for the voice consultation feature.
+      </Alert>
     );
+  }
+
+  if (!sessionId) {
+    return (
+      <Alert variant="error" title="Session Error">
+        No active session found. Please restart the consultation.
+      </Alert>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[320px] w-full">
+        <div className="lg:col-start-1 lg:col-end-2 min-h-[280px] order-1">
+          <ConversationPane entries={conversationEntries} className="h-full min-h-[280px] lg:min-h-[360px]" />
+        </div>
+        <div className="lg:col-start-2 lg:col-end-3 min-h-[280px] order-2">
+          <PrescriptionPane
+            content={streamedMedication || null}
+            medicationEnglish={streamedMedicationEnglish}
+            language={patientData.language}
+            isLoading={prescriptionLoading}
+            className="h-full min-h-[280px] lg:min-h-[360px]"
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center">
+          <div
+            className={`w-20 h-20 rounded-full flex items-center justify-center border-4 ${
+              isRecording 
+                ? 'bg-red-50 border-red-400' 
+                : showProcessing 
+                  ? 'bg-blue-50 border-blue-400' 
+                  : 'bg-gray-50 border-gray-200'
+            }`}
+          >
+            {isRecording ? (
+              <Mic className="w-10 h-10 text-red-600 animate-pulse" />
+            ) : (
+              <MicOff className="w-10 h-10 text-gray-400" />
+            )}
+          </div>
+          <p className="text-sm text-gray-600 mt-2 text-center">
+            {isRecording
+              ? isCollectingInitialSymptoms 
+                ? 'Describing symptoms... Click stop when finished'
+                : 'Speaking... Click stop when finished'
+              : showProcessing
+              ? isCollectingInitialSymptoms
+                ? 'Processing symptoms and generating questions...'
+                : 'Processing your response...'
+              : isComplete
+              ? 'Consultation complete'
+              : isCollectingInitialSymptoms
+              ? 'Click start to describe your symptoms'
+              : 'Click start to answer the question'}
+          </p>
+          {transcript && isRecording && (
+            <p className="text-xs text-gray-500 mt-1 max-w-md text-center">
+              "{transcript}"
+            </p>
+          )}
+        </div>
+
+        {isRecording && (
+          <div className="w-full max-w-md rounded-lg overflow-hidden border border-gray-200 bg-white">
+            <ReactMic
+              record={true}
+              className="w-full"
+              strokeColor="#ef4444"
+              backgroundColor="rgba(255,255,255,0.8)"
+              onStop={() => {}}
+            />
+          </div>
+        )}
+
+        {!isComplete && !showProcessing && (
+          <Button
+            onClick={isRecording ? handleStopRecording : handleStartRecording}
+            variant={isRecording ? 'danger' : 'primary'}
+            size="lg"
+            leftIcon={isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+          >
+            {isRecording 
+              ? 'Stop Speaking' 
+              : isCollectingInitialSymptoms 
+                ? 'Start Describing Symptoms' 
+                : 'Start Speaking'}
+          </Button>
+        )}
+
+        {(isComplete || error) && (
+          <Button onClick={handleNewConsultation} variant="secondary" size="lg">
+            New Consultation
+          </Button>
+        )}
+
+        {error && (
+          <Alert variant="error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+
+        <Alert variant="warning" title="Important">
+          This AI consultation is for informational purposes only. Always consult a licensed healthcare provider for medical advice.
+        </Alert>
+      </div>
+    </div>
+  );
 };

@@ -37,7 +37,7 @@ class TranslationService:
         return self.target_language == Language.ENGLISH
     
     @property
-    def language_code(self) -> bool:
+    def language_code(self) -> str:
         """Get the language code"""
         return self.target_language.value
     
@@ -75,7 +75,7 @@ class TranslationService:
         if self.is_english:
             return text
         
-        cached = self._get_cached(text, to_english)
+        cached = self._get_cache(text, to_english)
         if cached:
             logger.debug("Translation cache hit")
             return cached
@@ -93,7 +93,7 @@ class TranslationService:
             result = translator.translate(text=text)
             logger.debug(
                 "Translated '%s...' from %s to %s",
-                text[:30],
+                result[:30],
                 source_lang,
                 dest_language,
             )

@@ -123,6 +123,7 @@ class TelemetryManager:
 
         if not self.tracer:
             yield None
+            return
         
         with self.tracer.start_as_current_span(name, attributes=attributes) as span:
             yield span

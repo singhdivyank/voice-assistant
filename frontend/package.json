@@ -17,6 +17,8 @@
     "lucide-react": "^0.564.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-hot-toast": "^2.6.0",
+    "react-mic-recorder": "^1.1.3",
     "tailwind-merge": "^2.4.0",
     "zustand": "^5.0.11"
   },

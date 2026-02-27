@@ -2,45 +2,47 @@ export type AlertVariant = 'info' | 'success' | 'warning' | 'error';
 export type ButtonVariant = 'primary' | 'secondary' | 'success' | 'danger' | 'ghost';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 export type ConsultationPhase = 'patient-info' | 'voice-consultation';
+export type Language = 
+  | 'en' | 'hi' | 'bn' | 'gu' | 'kn'
+  | 'ml' | 'ta' | 'te' | 'ur' | 'es'
+  | 'fr' | 'zh' | 'ja' | 'ko' | 'mr';
+export type Gender = 'male' | 'female' | 'other' | 'undisclosed';
+type SessionStatus = 'active' | 'completed' | 'cancelled';
 
-export const API_BASE_URL = import .meta.env.VITA_API_URL || 'http://localhost:8000/api/v1';
+export const API_BASE_URL = import.meta.env.VITA_API_URL || 'http://localhost:8000/api/v1';
+export const introText =
+  "Welcome to your consultation. Your details have been confirmed. Please describe your main symptoms clearly when you're ready. Click start speaking, tell me about your symptoms, then click stop when you're finished.";
 
 export const API_CONFIG = {
-    name: 'DocJarvis',
-    version: '2.0.0',
-    description: 'AI Medical Consultation Assistant'
+  name: 'DocJarvis',
+  version: '2.0.0',
+  description: 'AI Medical Consultation Assistant'
 };
 
 export const CONSULTATION_PHASES = [
-    { id: 'patient-info', label: 'Patient Info', description: 'Basic patient information' },
-    { id: 'complaint', label: 'Symptoms', description: 'Describe your symptoms' },
-    { id: 'questions', label: 'Questions', description: 'Answer follow-up questions' },
-    { id: 'diagnosis', label: 'Diagnosis', description: 'AI-powered diagnosis' },
-    { id: 'prescription', label: 'Prescription', description: 'Get your prescription' },
+  { id: 'patient-info', label: 'Patient Info', description: 'Basic patient information' },
+  { id: 'complaint', label: 'Symptoms', description: 'Describe your symptoms' },
+  { id: 'questions', label: 'Questions', description: 'Answer follow-up questions' },
+  { id: 'diagnosis', label: 'Diagnosis', description: 'AI-powered diagnosis' },
+  { id: 'prescription', label: 'Prescription', description: 'Get your prescription' },
 ] as const;
 
 export const ERROR_MESSAGES = {
-    NETWORK_ERROR: 'Unable to connect to server',
-    SESSION_EXPIRED: 'Your session has expired',
-    INVALID_INPUT: 'Please check your input and try again',
-    SERVER_ERROR: 'An unexpected error',
-    SPEECH_NOT_SUPPORTED: 'Speech recognition is not supported in your browser',
-    MICROPHONE_DENIED: 'Microphone access denied',
+  NETWORK_ERROR: 'Unable to connect to server',
+  SESSION_EXPIRED: 'Your session has expired',
+  INVALID_INPUT: 'Please check your input and try again',
+  SERVER_ERROR: 'An unexpected error',
+  SPEECH_NOT_SUPPORTED: 'Speech recognition is not supported in your browser',
+  MICROPHONE_DENIED: 'Microphone access denied',
 };
 
 export const VALIDATION = {
-    MIN_COMPLAINT_LENGTH: 10,
-    MAX_COMPLAINT_LENGTH: 2000,
-    MIN_ANSWER_LENGTH: 1,
-    MAX_ANSWER_LENGTH: 1000,
-    MIN_AGE: 1,
-    MAX_AGE: 90
-};
-
-export const ANIMATION_DURATION = {
-    fast: 150,
-    normal: 300,
-    slow: 500
+  MIN_COMPLAINT_LENGTH: 10,
+  MAX_COMPLAINT_LENGTH: 2000,
+  MIN_ANSWER_LENGTH: 1,
+  MAX_ANSWER_LENGTH: 1000,
+  MIN_AGE: 1,
+  MAX_AGE: 90
 };
 
 export const alertStyles: Record<AlertVariant, string> = {
@@ -83,25 +85,47 @@ export const sizeStyles: Record<ButtonSize, string> = {
   lg: 'px-6 py-3 text-lg',
 };
 
+export const LANGUAGE_MAP: Record<string, string> = { 
+  en: 'en-US', hi: 'hi-IN', bn: 'bn-IN', mr: 'mr-IN', ta: 'ta-IN', 
+  te: 'te-IN', kn: 'kn-IN', ml: 'ml-IN', gu: 'gu-IN', ur: 'ur-PK', 
+  es: 'es-ES', fr: 'fr-FR', zh: 'zh-CN', ja: 'ja-JP', ko: 'ko-KR' 
+};
+
+export const GENDERS_MAP: Record<Gender, string> = {
+  male: 'Male',
+  female: 'Female',
+  other: 'Other',
+  undisclosed: 'Prefer not to say',
+};
+
+export const errorMessages: Record<string, string> = {
+  'no-speech': 'No speech detected. Please try again.',
+  'audio-capture': 'Microphone not available.',
+  'not-allowed': 'Microphone permission denied.',
+  'network': 'Network error occurred.',
+  'aborted': 'Speech recognition was aborted.',
+  'service-not-allowed': 'Speech service not allowed. Make sure you\'re using HTTPS.',
+};
+
 export interface HeaderProps {
-    onSettingsClick?: () => void;
-    onHelpClick?: () => void;
+  onSettingsClick?: () => void;
+  onHelpClick?: () => void;
 }
 
 export interface SpeechControlProps {
-    text: string;
-    language?: string;
-    autoPlay?: boolean;
-    onStart?: () => void;
-    onEnd?: () => void;
+  text: string;
+  language?: string;
+  autoPlay?: boolean;
+  onStart?: () => void;
+  onEnd?: () => void;
 }
 
 export interface VoiceInputProps {
-    onTranscript: (text: string) => void;
-    onError?: (error: string) => void;
-    language?: string;
-    placeholder?: string;
-    disabled?: boolean;
+  onTranscript: (text: string) => void;
+  onError?: (error: string) => void;
+  language?: string;
+  placeholder?: string;
+  disabled?: boolean;
 }
 
 export interface AlertProps {
@@ -151,45 +175,145 @@ export interface ConversationDisplayProps {
 }
 
 export interface SpeechSynthesisOptions {
-    language?: string;
-    pitch?: number;
-    rate?: number;
-    volume?: number;
-    voice?: string;
-    onStart?: () => void;
-    onEnd?: () => void;
-    onError?: (error: string) => void;
+  language?: string;
+  pitch?: number;
+  rate?: number;
+  volume?: number;
+  voice?: string;
+  onStart?: () => void;
+  onEnd?: () => void;
+  onError?: (error: string) => void;
 }
 
 export interface SpeechSynthesisHook {
-    isSupported: boolean;
-    isSpeaking: boolean;
-    isPaused: boolean;
-    voices: SpeechSynthesisVoice[];
-    speak: (text: string) => void;
-    pause: () => void;
-    resume: () => void;
-    cancel: () => void;
+  isSupported: boolean;
+  isSpeaking: boolean;
+  isPaused: boolean;
+  voices: SpeechSynthesisVoice[];
+  speak: (text: string) => void;
+  pause: () => void;
+  resume: () => void;
+  cancel: () => void;
 }
 
 export interface SpeechRecognitionOptions {
-    language?: string;
-    continuous?: boolean;
-    onResult?: (transcript: string, isFinal: boolean) => void;
-    onError?: (error: string) => void;
-    onEnd?: () => void;
+  language?: string;
+  continuous?: boolean;
+  onResult?: (transcript: string, isFinal: boolean) => void;
+  onError?: (error: string) => void;
+  onEnd?: () => void;
 }
 
 export interface speechRecognitionHook {
-    isListening: boolean;
-    isSupported: boolean;
-    transcript: string;
-    startListening: () => void;
-    stopListening: () => void;
-    resetTranscript: () => void;
+  isListening: boolean;
+  isSupported: boolean;
+  transcript: string;
+  startListening: () => void;
+  stopListening: () => void;
+  resetTranscript: () => void;
 }
 
 export interface SpeechRecognitionEvent extends Event {
-    results: SpeechRecognitionResultList;
-    resultIndex: number;
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+export interface PrescriptionPaneProps {
+  content: string | null;
+  medicationEnglish?: string | null;
+  language?: string;
+  isLoading?: boolean;
+  className?: string;
+}
+
+export interface SessionCreate {
+  patient_age: number;
+  patient_gender: Gender;
+  language: Language;
+  initial_complaint: string;
+}
+
+export interface AnswerSubmit {
+  question_index: number;
+  answer: string;
+}
+
+export interface DiagnosisRequest {
+  complaint: string;
+}
+
+export interface SessionResponse {
+  session_id: string;
+  created_at: string;
+  status: SessionStatus;
+  patient_age: number;
+  patient_gender: Gender;
+  language: Language;
+  initial_complaint: string;
+  questions: string[];
+}
+
+export interface ConversationTurn {
+  question: string;
+  answer: string;
+}
+
+export interface SessionState {
+  session_id: string;
+  status: SessionStatus;
+  patient_age: number;
+  patient_gender: Gender;
+  language: Language;
+  initial_complaint: string;
+  questions: string[];
+  conversation: ConversationTurn[];
+  current_question_index: number;
+  medication: string | null;
+  prescription_path: string | null;
+}
+
+export interface DiagnosisQuestion {
+  index: number;
+  question: string;
+  answered?: boolean;
+}
+
+export interface MedicationResponse {
+  session_id: string;
+  medication: string;
+  disclaimer?: string;
+}
+
+export interface PrescriptionResponse {
+  session_id: string;
+  prescription_path: string;
+  download_url: string;
+}
+
+export interface StreamingChunk {
+  type: 'question' | 'medication' | 'error';
+  contet: string;
+  index?: number;
+  is_final: boolean;
+}
+
+export interface ApiError {
+  error: string;
+  type: string;
+}
+
+export interface PatientFormData {
+  age: number;
+  gender: Gender;
+  language: Language;
+}
+
+export interface ConversationEntry {
+  speaker: 'you' | 'doc';
+  text: string;
+}
+
+export interface ConversationPaneProps {
+  entries: ConversationEntry[];
+  className?: string;
 }

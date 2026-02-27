@@ -47,12 +47,12 @@ class Settings(BaseSettings):
     # LangSmith monitoring
     langsmith_api_key: Optional[str] = Field(default=None, alias="LANGSMITH_API_KEY")
     langsmith_project: str = Field(default="", alias="LANGSMITH_PROJECT")
-    langsmith_tracing: bool = True
+    langsmith_tracing: bool = False
 
     # OpenTelemetry
     otel_service_name: str = Field(default="", alias="OTEL_SERVICE_NAME")
     otel_exporter_endpoint: str = Field(default="", alias="OTEL_EXPORTER_ENDPOINT")
-    otel_enabled: bool = True
+    otel_enabled: bool = False
 
     # Redis
     redis_url: str = Field(default="", alias="REDIS_URL")

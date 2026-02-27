@@ -48,10 +48,18 @@ class Language(Enum):
     KOREAN = "ko"
 
     @classmethod
-    def from_sring(cls, name: str) -> "Language":
-        """Get language enum from string name"""
+    def from_string(cls, name: str) -> "Language":
+        """Get language enum from string name (e.g. 'hindi', 'spanish')"""
         mapping = {lang.name.lower(): lang for lang in cls}
         return mapping.get(name.lower(), cls.ENGLISH)
+
+    @classmethod
+    def from_code(cls, code: str) -> "Language":
+        """Get language enum from ISO code (e.g. 'en', 'hi', 'es')"""
+        if not code:
+            return cls.ENGLISH
+        mapping = {lang.value.lower(): lang for lang in cls}
+        return mapping.get(code.lower().strip(), cls.ENGLISH)
 
     @classmethod
     def choices(cls) -> list[str]:
@@ -114,6 +122,7 @@ class DiagnosisSession:
     medication: Optional[str] = None
     current_question_index: int = 0
     status: str = "active"
+    language: str = "en"
 
     @property
     def conversation_summary(self) -> str:
@@ -144,7 +153,8 @@ class DiagnosisSession:
             ],
             "medication": self.medication,
             "current_question_index": self.current_question_index,
-            "status": self.status
+            "status": self.status,
+            "language": getattr(self, "language", "en"),
         }
     
     @classmethod
@@ -165,6 +175,7 @@ class DiagnosisSession:
         session.medication = data.get("medication")
         session.current_question_index = data.get("current_question_index", 0)
         session.status = data.get("status", "active")
+        session.language = data.get("language", "en")
         return session
 
 

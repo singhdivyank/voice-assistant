@@ -44,7 +44,7 @@ async def generate_questions_translated(
         try:
             questions = diagnosis_engine.generate_questions(request.complaint)
             if not language == "en":
-                lang = Language.from_sring(language)
+                lang = Language.from_string(language)
                 translation = TranslationService(target_language=lang)
                 questions = [
                     translation.to_user_language(question) for question in questions
