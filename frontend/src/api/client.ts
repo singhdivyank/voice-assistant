@@ -2,9 +2,18 @@
  * API client for DocJarvis backend
 */
 
-import { API_BASE_URL, SessionCreate, SessionResponse, SessionState,
-    AnswerSubmit, MedicationResponse, PrescriptionResponse,
-    DiagnosisQuestion, ApiError } from '@/utils/';
+import { 
+    API_BASE_URL,
+    AnswerSubmit,  
+    ApiError, 
+    DiagnosisQuestion, 
+    MedicationResponse,
+    PrescriptionResponse,
+    SessionCreate, 
+    SessionResponse, 
+    SessionState, 
+    STTResponse,
+} from '@/utils/';
 
 class ApiClient {
     private baseUrl: string;
@@ -55,6 +64,39 @@ class ApiClient {
 
     async getSession(sessionId: string): Promise<SessionState> {
         return this.request<SessionState>(`/sessions/${sessionId}`)
+    }
+
+    async transcribeAndRespond(
+        sessionId: string,
+        audioBlob: Blob,
+        questionIndex: number = 0
+    ): Promise<STTResponse> {
+        const url = `${this.baseUrl}/sessions/${sessionId}/transcribe?question_index=${questionIndex}`;
+        const formData = new FormData();
+        formData.append('audio_file', audioBlob, 'audio.wav');
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const error: ApiError = await response.json().catch(() => ({
+                    error: 'Request failed',
+                    type: 'NetworkError'
+                }));
+                throw new Error(error.error || `HTTP ${response.status}`)
+            }
+
+            return response.json();
+        } catch (error) {
+            if (error instanceof Error) {
+                throw error;
+            }
+
+            throw new Error('STT request failed');
+        }
     }
 
     async submitAnswer(sessionId: string, data: AnswerSubmit): Promise<{
@@ -159,7 +201,39 @@ class ApiClient {
     async healthCheck(): Promise<{ status: string; version: string }> {
         return this.request('/health');
     }
+
+    playBase64Audio(base64Audio: string): Promise<void>{
+        return new Promise((resolve, reject) => {
+            try {
+                const byteCharacters = atob(base64Audio);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+
+                const byteArray = new Uint8Array(byteNumbers);
+                const audioBlob = new Blob([byteArray], { type: 'audio/mp3' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+
+                audio.onended = () => {
+                    URL.revokeObjectURL(audioUrl);
+                    resolve();
+                };
+
+                audio.onerror = () => {
+                    URL.revokeObjectURL(audioUrl);
+                    reject(new Error('Audio playback failed'));
+                };
+
+                audio.play();
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
 }
 
 export const apiClient = new ApiClient();
 export default apiClient;
+export type { STTResponse };

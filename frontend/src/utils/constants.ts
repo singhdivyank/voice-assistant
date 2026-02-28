@@ -13,27 +13,11 @@ export const API_BASE_URL = import.meta.env.VITA_API_URL || 'http://localhost:80
 export const introText =
   "Welcome to your consultation. Your details have been confirmed. Please describe your main symptoms clearly when you're ready. Click start speaking, tell me about your symptoms, then click stop when you're finished.";
 
-export const API_CONFIG = {
-  name: 'DocJarvis',
-  version: '2.0.0',
-  description: 'AI Medical Consultation Assistant'
-};
-
-export const CONSULTATION_PHASES = [
-  { id: 'patient-info', label: 'Patient Info', description: 'Basic patient information' },
-  { id: 'complaint', label: 'Symptoms', description: 'Describe your symptoms' },
-  { id: 'questions', label: 'Questions', description: 'Answer follow-up questions' },
-  { id: 'diagnosis', label: 'Diagnosis', description: 'AI-powered diagnosis' },
-  { id: 'prescription', label: 'Prescription', description: 'Get your prescription' },
-] as const;
-
 export const ERROR_MESSAGES = {
-  NETWORK_ERROR: 'Unable to connect to server',
-  SESSION_EXPIRED: 'Your session has expired',
-  INVALID_INPUT: 'Please check your input and try again',
-  SERVER_ERROR: 'An unexpected error',
-  SPEECH_NOT_SUPPORTED: 'Speech recognition is not supported in your browser',
-  MICROPHONE_DENIED: 'Microphone access denied',
+  MICROPHONE_DENIED: 'Microphone access denied. Please allow microphone access and start again',
+  NOT_FOUND: 'No microphone found. Please check your microphone connection',
+  ACCESS_DENIED: 'Failed to access microphone. Please check your browser permissions',
+  RECORDING_ERROR: 'Failed to start recording',
 };
 
 export const VALIDATION = {
@@ -281,6 +265,7 @@ export interface DiagnosisQuestion {
 export interface MedicationResponse {
   session_id: string;
   medication: string;
+  medication_english?: string | null,
   disclaimer?: string;
 }
 
@@ -316,4 +301,26 @@ export interface ConversationEntry {
 export interface ConversationPaneProps {
   entries: ConversationEntry[];
   className?: string;
+}
+
+export interface STTResponse {
+  transcribed_text: string;
+  next_question: string | null;
+  response_audio: string | null;
+  is_complete: boolean;
+  should_generate_recommendations: boolean;
+  current_index: number;
+}
+
+export interface AudioRecordingOptions {
+  onRecordingComplete?: (audioBlob: Blob) => void;
+  onError?: (error: string) => void;
+}
+
+export interface AudioRecordingHook {
+  isRecording: boolean;
+  isSupported: boolean;
+  startRecording: () => void;
+  stopRecording: () => void;
+  audioBlob: Blob | null;
 }

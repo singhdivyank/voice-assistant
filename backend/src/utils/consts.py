@@ -237,7 +237,7 @@ These questions should help narrow down the diagnosis.
 
 Patient's complaint: {input}
 
-Generate 3 specific, medically relevant follow-up questions.
+Strictly generate only 3 specific, medically relevant follow-up questions.
 Format each question on a new line, numbered 1-3""".strip()
 
 MEDICATION_PROMPT = """Based on the following patient information and conversation, provide:
@@ -296,4 +296,14 @@ MESSAGES = {
     "error": "An error occurred. Please try again.",
     "network_error": "Unable to connect. Please check your internet connection.",
     "disclaimer": "This is AI-generated advice. Please consult a licensed physician.",
+}
+
+FORMAT_MAP = {
+    '.wav': 'wav',
+    '.flac': 'flac',
+    '.webm': 'webm',
+    '.mp3': 'mp3',
+    '.m4a': 'mp4',
+    '.aiff': 'aiff',
+    '.aif': 'aiff'
 }

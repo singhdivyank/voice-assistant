@@ -1,11 +1,12 @@
 /**
- * Zustand store for voice-first consultation state management
+ * Enhanced Zustand store with direct medication API call (no streaming)
  */
 
 import { create } from 'zustand'
 import { devtools, persist } from 'zustand/middleware'
 import { SessionState, PatientFormData, Gender, Language, ConsultationPhase, ConversationTurn, DiagnosisQuestion } from '@/utils/';
-import apiClient from '../api/client';
+import apiClient, { STTResponse } from '../api/client';
+import { API_BASE_URL } from '@/utils/';
 
 interface ConsultationState {
     // Session data
@@ -28,23 +29,27 @@ interface ConsultationState {
     // Voice consultation state
     conversationHistory: ConversationTurn[];
     currentQuestion: string | null;
-    streamedMedication: string;
-    streamedMedicationEnglish: string | null;
-    questions: string[],
+    medicationRecommendations: string;
+    medicationEnglish: string | null;
+    questions: string[];
+
+    // Audio-specific state
+    isRecording: boolean;
+    isProcessingAudio: boolean;
 
     // Actions
     setPatientData: (data: Partial<PatientFormData>) => void;
     startVoiceConsultation: () => Promise<void>;
-    submitVoiceAnswer: (answer: string) => Promise<void>;
-    processInitialSymptoms: (symptoms: string) => Promise<void>;
+    submitAudioAnswer: (audioBlob: Blob) => Promise<void>;
+    processInitialAudio: (audioBlob: Blob) => Promise<void>;
     reset: () => void;
     setPhase: (phase: ConsultationPhase) => void;
     setError: (error: string | null) => void;
-    setListening: (listening: boolean) => void;
+    setRecording: (recording: boolean) => void;
     setSpeaking: (speaking: boolean) => void;
     setCurrentQuestion: (question: string) => void;
     setQuestions: (questions: DiagnosisQuestion[]) => void;
-    updateInitialComplaint: (complaint: string) => void;
+    playResponseAudio: (base64Audio: string) => Promise<void>;
 }
 
 const initialPatientData: PatientFormData = {
@@ -70,9 +75,11 @@ export const useConsultationStore = create<ConsultationState>()(
                 error: null,
                 conversationHistory: [],
                 currentQuestion: null,
-                streamedMedication: '',
-                streamedMedicationEnglish: null,
+                medicationRecommendations: '',
+                medicationEnglish: null,
                 questions: [],
+                isRecording: false,
+                isProcessingAudio: false,
 
                 setPatientData: (data) =>
                     set((state) => ({
@@ -96,6 +103,7 @@ export const useConsultationStore = create<ConsultationState>()(
                             phase: 'voice-consultation',
                             isLoading: false,
                             conversationHistory: [],
+                            currentQuestionIndex: 0,
                         });
                     } catch (err) {
                         const message = err instanceof Error ? err.message : 'Failed to start consultation';
@@ -104,93 +112,133 @@ export const useConsultationStore = create<ConsultationState>()(
                     }
                 },
 
-                processInitialSymptoms: async (symptoms: string) => {
+                processInitialAudio: async (audioBlob: Blob) => {
                     const { sessionId } = get();
                     if (!sessionId) {
                         throw new Error('No active session');
                     }
 
-                    set ({ isProcessing: true, error: null });
+                    set({ isProcessingAudio: true, error: null });
                     try {
-                        const questionsResponse = await apiClient.generateQuestions(symptoms);
-                        const questionStrings = questionsResponse.map(q => q.question);
+                        const response: STTResponse = await apiClient.transcribeAndRespond(
+                            sessionId, 
+                            audioBlob, 
+                            0
+                        );
+
+                        const newConversation: ConversationTurn = {
+                            question: "Please describe your main symptoms",
+                            answer: response.transcribed_text
+                        };
+
                         set({
-                            questions: questionStrings,
-                            currentQuestion: questionStrings[0] || null,
-                            currentQuestionIndex: 0,
-                            isProcessing: false,
+                            conversationHistory: [newConversation],
+                            currentQuestion: response.next_question,
+                            currentQuestionIndex: response.current_index,
+                            isProcessingAudio: false,
                         });
                         
-                        await get().updateInitialComplaint(symptoms);
+                        if (response.response_audio) {
+                            await get().playResponseAudio(response.response_audio);
+                        }
                     } catch (err) {
-                        const message = err instanceof Error ? err.message: 'Failed to process symptoms';
-                        set ({ error: message, isProcessing: false });
+                        const message = err instanceof Error ? err.message : 'Failed to process audio';
+                        set({ error: message, isProcessingAudio: false });
                         throw err;
                     }
                 },
 
-                submitVoiceAnswer: async (answer: string) => {
-                    const { sessionId, currentQuestion, currentQuestionIndex, conversationHistory } = get();
+                submitAudioAnswer: async (audioBlob: Blob) => {
+                    const { sessionId, currentQuestion, conversationHistory, currentQuestionIndex } = get();
                     if (!sessionId || !currentQuestion) return;
-                    set({ isListening: false, isProcessing: true, error: null });
+
+                    set({ isProcessingAudio: true, error: null });
 
                     try {
+                        console.log(`Question index at start in store: ${currentQuestionIndex}`)
+                        const actualQuestionIndex = currentQuestionIndex;
+                        console.log(`Submitting answer for question index: ${actualQuestionIndex}`);
+                        
+                        const response: STTResponse = await apiClient.transcribeAndRespond(
+                            sessionId, 
+                            audioBlob, 
+                            actualQuestionIndex
+                        );
+
                         const newConversation: ConversationTurn = {
                             question: currentQuestion,
-                            answer: answer
+                            answer: response.transcribed_text
                         };
 
                         const updatedHistory = [...conversationHistory, newConversation];
-                        const response = await apiClient.submitAnswer(sessionId, {
-                            question_index: currentQuestionIndex,
-                            answer,
-                        });
 
-                        if (response.is_complete) {
+                        if (response.should_generate_recommendations) {
                             set({
                                 conversationHistory: updatedHistory,
                                 currentQuestion: null,
+                                isProcessingAudio: false,
                                 isProcessing: true,
                             });
 
-                            await apiClient.completeSessionStream(
-                                sessionId,
-                                (chunk) => {
-                                    set((state) => ({
-                                        streamedMedication: state.streamedMedication + chunk,
-                                    }));
-                                },
-                                () => {
-                                    set({
-                                        isComplete: true,
-                                        isProcessing: false,
+                            try {
+                                const medicationResponse = await apiClient.completeSession(sessionId);
+                                
+                                set({
+                                    medicationRecommendations: medicationResponse.medication,
+                                    medicationEnglish: medicationResponse.medication_english,
+                                    isProcessing: false,
+                                });
+                                
+                                try {
+                                    const ttsResponse = await fetch(`${API_BASE_URL}/sessions/${sessionId}/speak-recommendations`, {
+                                        method: 'POST'
                                     });
-                                },
-                                (error) => {
-                                    set({
-                                        error: error.message,
-                                        isProcessing: false,
-                                    });
-                                },
-                                (medicationEnglish) => {
-                                    set({ streamedMedicationEnglish: medicationEnglish });
+                                    const { audio } = await ttsResponse.json();
+                                    await apiClient.playBase64Audio(audio);
+                                } catch (ttsError) {
+                                    console.error('Failed to speak recommendations:', ttsError);
                                 }
-                            );
-                        } else {
-                            const updatedSession = await apiClient.getSession(sessionId);
-                            const nextQuestion = updatedSession.questions[response.current_index];
 
+                                set({
+                                    isComplete: true,
+                                });
+
+                            } catch (medicationError) {
+                                const message = medicationError instanceof Error ? medicationError.message : 'Failed to generate recommendations';
+                                set({
+                                    error: message,
+                                    isProcessing: false,
+                                });
+                                throw medicationError;
+                            }
+                        } else {
+                            const nextQuestionIndex = currentQuestionIndex + 1;
                             set({
                                 conversationHistory: updatedHistory,
-                                currentQuestion: nextQuestion,
-                                currentQuestionIndex: response.current_index,
-                                isProcessing: false,
+                                currentQuestion: response.next_question,
+                                currentQuestionIndex: nextQuestionIndex,
+                                isProcessingAudio: false,
                             });
+
+                            if (response.response_audio) {
+                                await get().playResponseAudio(response.response_audio);
+                            }
                         }
                     } catch (err) {
-                        const message = err instanceof Error ? err.message : 'Failed to submit answer';
-                        set({ error: message, isProcessing: false });
+                        const message = err instanceof Error ? err.message : 'Failed to submit audio answer';
+                        set({ error: message, isProcessingAudio: false });
                         throw err;
+                    }
+                },
+
+                playResponseAudio: async (base64Audio: string) => {
+                    set({ isSpeaking: true });
+                    try {
+                        await apiClient.playBase64Audio(base64Audio);
+                    } catch (err) {
+                        console.error('Failed to play response audio:', err);
+                    } finally {
+                        set({ isSpeaking: false });
                     }
                 },
 
@@ -208,13 +256,16 @@ export const useConsultationStore = create<ConsultationState>()(
                     error: null,
                     conversationHistory: [],
                     currentQuestion: null,
-                    streamedMedication: '',
-                    streamedMedicationEnglish: null,
+                    medicationRecommendations: '',
+                    medicationEnglish: null,
+                    questions: [],
+                    isRecording: false,
+                    isProcessingAudio: false,
                 }),
 
                 setPhase: (phase) => set({ phase }),
                 setError: (error) => set({ error }),
-                setListening: (isListening) => set({ isListening }),
+                setRecording: (isRecording) => set({ isRecording }),
                 setSpeaking: (isSpeaking) => set({ isSpeaking }),
                 setCurrentQuestion: (question) => set({ currentQuestion: question }),
                 setQuestions: (questions) => set({
@@ -222,14 +273,6 @@ export const useConsultationStore = create<ConsultationState>()(
                     currentQuestion: questions[0]?.question || null,
                     currentQuestionIndex: 0
                 }),
-                updateInitialComplaint: async (complaint: string) => {
-                    set((state) => ({
-                        sessionState: state.sessionState ? {
-                            ...state.sessionState,
-                            initial_complaint: complaint
-                        } : null
-                    }))
-                }
             }),
             {
                 name: 'consultation-storage',
