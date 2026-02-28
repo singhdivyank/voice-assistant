@@ -3,8 +3,11 @@
 import json
 import logging
 import uuid
+import tempfile
 
-from fastapi import APIRouter, HTTPException, Depends
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from fastapi.responses import StreamingResponse
 
 from src.api.schemas import (
@@ -15,15 +18,17 @@ from src.core.diagnosis import DiagnosisService, PatientInfo
 from src.config.settings import get_settings
 from src.config.monitoring import telemetry
 from src.services.session_store import SessionStore, get_session_store
+from src.services.speech import SpeechService
 from src.services.translation import TranslationService
 from src.utils.consts import Gender, Language, DiagnosisSession
-
+from src.utils.file_handler import FileHandler
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 settings = get_settings()
 
 diagnosis_service = DiagnosisService()
+file_handler = FileHandler()
 
 
 def _translate_questions(questions: list[str], lang_code: str) -> list[str]:
@@ -79,7 +84,9 @@ async def create_session(
             age=request.patient_age,
             gender=Gender.from_string(request.patient_gender)
         )
-        print(request.initial_complaint)
+        
+        logger.info("Initial complaint: %s", request.initial_complaint)
+        
         if request.initial_complaint:
             session = diagnosis_service.create_session(
                 session_id=session_id,
@@ -90,7 +97,7 @@ async def create_session(
             session = DiagnosisSession(
                 session_id=session_id,
                 patient=patient,
-                initial_complaint=request.initial_complaint or ""
+                initial_complaint= ""
             )
         
         session.language = request.language or "en"
@@ -109,6 +116,120 @@ async def create_session(
             initial_complaint=session.initial_complaint,
             questions=questions_for_client
         )
+
+@router.post("/{session_id}/transcribe")
+async def transcribe_and_respond(
+    session_id: str,
+    audio_file: UploadFile = File(...),
+    question_index: int = 0,
+    store: SessionStore = Depends(get_session_store)
+):
+    """STT endpoint to transcribe audio and generate response."""
+
+    session = await store.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    if session.status == "completed":
+        raise HTTPException(status_code=400, detail="Session already completed")
+    
+    lang = getattr(session, "language", "en")
+    temp_audio_path = None
+
+    try:
+        with telemetry.span("api_transcribe_and_respond", {"session_id": session_id}):
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
+                content = await audio_file.read()
+                temp_file.write(content)
+                temp_audio_path = Path(temp_file.name)
+            
+            speech_service = SpeechService(language=Language.from_code(lang))
+            transcribed_text = speech_service.listen_from_file(temp_audio_path)
+            logger.info("Transcribed audio: %s", transcribed_text[:100])
+            answer_for_llm = _translate_text_to_english(transcribed_text, lang)
+
+            if not session.questions and not session.initial_complaint:
+                session.initial_complaint = answer_for_llm
+                session.questions = diagnosis_service.engine.generate_questions(answer_for_llm)
+                session.current_question_index = 0
+                
+                next_question_en = session.questions[0] if session.questions else None
+                next_question = _translate_text_to_user(next_question_en, lang) if next_question_en else None
+                
+                await store.save(session)
+
+                response_audio_b64 = None
+                if next_question:
+                    response_audio_b64 = await speech_service.synthesize_base64(next_question)
+                
+                return {
+                    "transcribed_text": transcribed_text,
+                    "next_question": next_question,
+                    "response_audio": response_audio_b64,
+                    "is_complete": False,
+                    "should_generate_recommendations": False,
+                    "current_index": 0
+                }
+            
+            if question_index < len(session.questions):
+                diagnosis_service.add_response(
+                    session=session,
+                    question_index=question_index,
+                    answer=answer_for_llm
+                )
+
+                if session.current_question_index >= len(session.questions):
+                    await store.save(session)
+
+                    return {
+                        "transcribed_text": transcribed_text,
+                        "next_question": None,
+                        "response_audio": None,
+                        "is_complete": True,
+                        "should_generate_recommendations": True,
+                        "current_index": session.current_question_index
+                    }
+                else:
+                    next_question_en = session.questions[session.current_question_index]
+                    next_question = _translate_text_to_user(next_question_en, lang)
+
+                    await store.save(session=session)
+
+                    response_audio_b64 = await speech_service.synthesize_base64(next_question)
+                
+                    return {
+                        "transcribed_text": transcribed_text,
+                        "next_question": next_question,
+                        "response_audio": response_audio_b64,
+                        "is_complete": False,
+                        "should_generate_recommendations": False,
+                        "current_index": session.current_question_index
+                    }
+            else:
+                raise HTTPException(status_code=400, detail="Invalid question index")
+
+    except Exception as e:
+        logger.error("STT processing failed: %s", e)
+        raise HTTPException(status_code=500, detail=f"STT processing failed: {str(e)}")
+    finally:
+        if temp_audio_path and temp_audio_path.exists():
+            file_handler.safe_delete(temp_audio_path)
+
+@router.post("/{session_id}/speak-recommendations")
+async def speak_recommendations(
+    session_id: str,
+    store: SessionStore = Depends(get_session_store)
+):
+    """Generates TTS audio for final recommendations"""
+
+    session = await store.get(session_id)
+    if not session or not session.medication:
+        raise HTTPException(status_code=404, detail="No recommendations found")
+    
+    lang = getattr(session, "language", "en")
+    speech_service = SpeechService(language=Language.from_code(lang))
+    audio_base64 = await speech_service.synthesize_base64(session.medication)
+    return {"audio": audio_base64}
 
 @router.get("/{session_id}", response_model=SessionState)
 async def get_session(

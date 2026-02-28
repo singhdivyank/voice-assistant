@@ -78,7 +78,7 @@ class DiagnosisEngine:
                 chain = self.diagnosis_prompt | self.llm
                 response = chain.invoke({"input": complaint})
                 questions = self._parse_questions(response.content)
-                logger.info("Generated %d diagnostic questions", len(questions))
+                logger.info(f"Generated questions: {questions}")
                 return questions
         except Exception as e:
             logger.error("Failed to generate questions: %s", e)
@@ -125,7 +125,7 @@ class DiagnosisEngine:
         except Exception as e:
             logger.error("Failed to stream medication: %s", e)
             telemetry.increment_counter("llm_errors", attributes={"type": "medication_stream"})
-            raise MedicationError(f"Coould not generate recommendations: {e}") from e
+            raise MedicationError(f"Could not generate recommendations: {e}") from e
 
     def _parse_questions(self, response: str) -> list[str]:
         """Parse questions from LLM resposne."""
@@ -180,14 +180,14 @@ class DiagnosisService:
     ) -> None:
         """Add a patient's response to a diagnostic question."""
 
-        if question_index < len(session.questions):
-            session.conversation.append(
-                ConversationTurn(
-                    question=session.questions[question_index], 
-                    answer=answer
-                )
-            )
-            session.current_question_index = question_index + 1
+        if question_index >= len(session.questions):
+            logger.warning(f"Question index {question_index} out of range")
+            return
+        
+        question = session.questions[question_index]
+        conversation_turn = ConversationTurn(question=question, answer=answer)
+        session.conversation.append(conversation_turn)
+        session.current_question_index = question_index + 1
 
     def complete_session(self, session: DiagnosisSession) -> str:
         """Complete the diagnosis and generate recommendations."""
