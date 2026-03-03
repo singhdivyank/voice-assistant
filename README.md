@@ -35,17 +35,39 @@ docjarvis/
 │   │   │   ├── __init__.py
 │   │   │   ├── diagnosis.py
 │   │   │   ├── prescription.py
+│   │   │   ├── multi_agent/
+│   │   │   │   ├── agents/
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── base_agent.py
+│   │   │   │   │   ├── diagnosis_agent.py
+│   │   │   │   │   ├── medication_agent.py
+│   │   │   │   │   ├── prescription_agent.py
+│   │   │   │   │   ├── qa_agent.py
+│   │   │   │   │   ├── stt_agent.py
+│   │   │   │   │   ├── translation_agent.py
+│   │   │   │   │   ├── tts_agent.py
+│   │   │   │   ├── workflow/
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── graph_builder.py
+│   │   │   │   │   └── state_manager.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── llm_manager.py
+│   │   ├── monitoring/
+│   │   │   ├── __init__.py
+│   │   │   ├── cache_manager.py
+│   │   │   ├── dashboard.py
+│   │   │   ├── load_balancer.py
+│   │   │   ├── performance_monitor.py
 │   │   ├── services/      
 │   │   │   ├── __init__.py
 │   │   │   ├── session_store.py      
 │   │   │   ├── speech.py
 │   │   │   ├── translation.py
-│   │   └── utils/
+│   │   ├── utils/
 │   │   │   ├── __init__.py
 │   │   │   ├── consts.py
 │   │   │   ├── exceptions.py
 │   │   │   └── file_handler.py
-│   └── app.py
 │   ├── tests/
 │   │   ├── conftest.py
 │   │   ├── unit/
@@ -79,15 +101,15 @@ docjarvis/
 │   │   │   │   ├── SpeechControls.tsx
 │   │   │   │   ├── VoiceInput.tsx
 │   │   │   └── ui/ # Reusable UI components
-│   │   │       ├── Alert.tsx
-│   │   │       ├── Button.tsx
-│   │   │       ├── Card.tsx
-│   │   │       ├── Input.tsx
-│   │   │       ├── index.ts
-│   │   │       ├── ProgressBar.tsx
-│   │   │       ├── Select.tsx
-│   │   │       ├── Spinner.tsx
-│   │   │       └── TextArea.tsx
+│   │   │   │   ├── Alert.tsx
+│   │   │   │   ├── Button.tsx
+│   │   │   │   ├── Card.tsx
+│   │   │   │   ├── Input.tsx
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── ProgressBar.tsx
+│   │   │   │   ├── Select.tsx
+│   │   │   │   ├── Spinner.tsx
+│   │   │   │   └── TextArea.tsx
 │   │   ├── hooks/
 │   │   │   ├── index.ts
 │   │   │   ├── useAudioRecording.ts

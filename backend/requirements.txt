@@ -10,6 +10,7 @@ google_generativeai==0.8.3
 langchain==0.3.27
 langchain-google-genai==2.0.7
 langchain-core==0.3.72
+langgraph==1.0.10
 
 SpeechRecognition==3.8.1
 gTTS==2.5.0
@@ -22,9 +23,11 @@ opentelemetry_sdk==1.39.1
 opentelemetry_exporter_otlp==1.39.1
 opentelemetry_instrumentation-fastapi==0.60b1
 opentelemetry_instrumentation-httpx==0.60b1
-grpcio==1.78.1
-
+opentelemetry_instrumentation-langchain==0.52.6
 langsmith==0.3.45
+psutil==7.2.2
+
+grpcio==1.78.1
 
 redis[hiredis]
 

@@ -53,6 +53,8 @@ interface ConsultationState {
 }
 
 const initialPatientData: PatientFormData = {
+    name: 'Guest User',
+    email: 'guest.user@example.com',
     age: 30,
     gender: 'undisclosed' as Gender,
     language: 'en' as Language,
@@ -92,6 +94,8 @@ export const useConsultationStore = create<ConsultationState>()(
 
                     try {
                         const response = await apiClient.createSession({
+                            patient_name: patientData.name,
+                            patient_email: patientData.email,
                             patient_age: patientData.age,
                             patient_gender: patientData.gender,
                             language: patientData.language,
