@@ -58,6 +58,14 @@ class Settings(BaseSettings):
     redis_url: str = Field(default="", alias="REDIS_URL")
     session_ttl: int = 3600
 
+    # CORS origins
+    origins = [
+        "https://localhost:3000", 
+        "http://localhost:3000",
+        "https://127.0.0.1:3000",
+        "http://127.0.0.1:3000",
+    ]
+
     def setup_dir(self) -> None:
         """Create necessary dictionaries"""
         for dir_path in [self.output_dir, self.audio_dir, self.prescription_dir]:

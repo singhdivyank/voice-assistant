@@ -6,7 +6,8 @@ from enum import Enum
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
+from typing import Any, List, Dict, Optional
+
 
 class Environment(str, Enum):
     DEV = "dev"
@@ -103,11 +104,13 @@ class ConversationTurn:
 class PatientInfo:
     """Patient demographic information"""
 
+    name: str
+    email: str
     age: int
     gender: Gender
 
     def __str__(self) -> str:
-        return f"Age: {self.age}, Gender: {self.gender.value}"
+        return f"Name: {self.name}, Age: {self.age}, Gender: {self.gender.value}, Email: {self.email}"
 
 
 @dataclass
@@ -177,6 +180,76 @@ class DiagnosisSession:
         session.status = data.get("status", "active")
         session.language = data.get("language", "en")
         return session
+
+
+@dataclass
+class AgentPerformanceMetrics:
+    """Track performance metrics for individual agents"""
+
+    agent_name: str
+    total_executions: int = 0
+    total_duration_ms: float = 0
+    average_duration_ms: float = 0
+    min_duration_ms: float = float('inf')
+    max_duration_ms: float = 0
+    error_count: int = 0
+    success_rate: float = 1.0
+
+    # latency percentiles
+    p50_ms: float = 0
+    p95_ms: float = 0
+    p99_ms: float = 0
+
+    # recent performance (sliding window)
+    recent_durations: List[float] = field(default_factory=list)
+    max_recent_samples: int = 100
+
+    def update(self, duration_ms: float, success: bool = True):
+        """Update metrics with new execution data"""
+
+        self.total_executions += 1
+
+        if not success:
+            self.error_count += 1
+        else:
+            self.total_duration_ms += duration_ms
+            self.min_duration_ms = min(self.min_duration_ms, duration_ms)
+            self.max_duration_ms = min(self.max_duration_ms, duration_ms)
+            self.average_duration_ms = self.total_duration_ms / max(1, self.total_executions - self.error_count)
+            self._update_durations(duration_ms)
+            self._calc_percentile()
+        
+        self.success_rate = (self.total_executions - self.error_count) / max(1, self.total_executions)
+    
+    def _update_durations(self, exec_time: float):
+        """Update the recent durations for percentile calculation"""
+        self.recent_durations.append(exec_time)
+        if len(self.recent_durations) - self.max_recent_samples > 0:
+            self.recent_durations.pop(0)
+    
+    def _calc_percentile(self):
+        """Calculate percentiles"""
+        if self.recent_durations:
+            sorted_durations = sorted(self.recent_durations)
+            n = len(sorted_durations)
+            self.p50_ms = sorted_durations[int(n * 0.5)]
+            self.p95_ms = sorted_durations[int(n * 0.95)]
+            self.p99_ms = sorted_durations[int(n * 0.99)]
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert metrics to dictionary for serialization"""
+        return {
+            "agent_name": self.agent_name,
+            "total_executions": self.total_executions,
+            "average_duration_ms": round(self.average_duration_ms, 2),
+            "min_duration_ms": round(self.min_duration_ms, 2) if self.min_duration_ms != float('inf') else 0,
+            "max_duration_ms": round(self.max_duration_ms, 2),
+            "error_count": self.error_count,
+            "success_rate": round(self.success_rate, 4),
+            "p50_ms": round(self.p50_ms, 2),
+            "p95_ms": round(self.p95_ms, 2),
+            "p99_ms": round(self.p99_ms, 2)
+        }
 
 
 class SessionStore(ABC):
@@ -254,6 +327,35 @@ Consultation Summary:
 {conversation}
 
 Provide clear, actionable medical guidance. Include appropriaet disclaimers.
+""".strip()
+
+AGENT_DIAGNOSIS_PROMPT = """
+Analyse the provided ```patient information```, ```complaint```, and ```Q&A summary``` and suggest about:
+1. Symptoms analysis
+2. Differential diagnosis
+3. Most likely diagnosis
+
+patient information:
+- Age: {age}
+- Gender: {gender}
+
+complaint: {complaint}
+Q&A summary: {qa_summary}
+""".strip()
+
+AGENT_MEDICATION_PROMPT = """
+Based on the diagnosis and patient information, provide:
+1. Recommended medication with dosage
+2. Lifestyle recommendations
+3. When to seek emergency care
+4. Follow-up instructions
+
+Patient information: 
+- Age: {age}
+- Gender: {gender}
+
+Diagnosis: {diagnosis}
+Symptoms Analysis: {symptoms}
 """.strip()
 
 PRESCRIPTION_TEMPLATE = """

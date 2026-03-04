@@ -10,6 +10,7 @@ export type Gender = 'male' | 'female' | 'other' | 'undisclosed';
 type SessionStatus = 'active' | 'completed' | 'cancelled';
 
 export const API_BASE_URL = import.meta.env.VITA_API_URL || 'http://localhost:8000/api/v1';
+export const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const introText =
   "Welcome to your consultation. Your details have been confirmed. Please describe your main symptoms clearly when you're ready. Click start speaking, tell me about your symptoms, then click stop when you're finished.";
 
@@ -211,6 +212,8 @@ export interface PrescriptionPaneProps {
 }
 
 export interface SessionCreate {
+  patient_name: string;
+  patient_email: string;
   patient_age: number;
   patient_gender: Gender;
   language: Language;
@@ -288,6 +291,8 @@ export interface ApiError {
 }
 
 export interface PatientFormData {
+  name: string;
+  email: string;
   age: number;
   gender: Gender;
   language: Language;

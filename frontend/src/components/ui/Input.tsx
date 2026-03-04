@@ -4,6 +4,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   helpText?: string;
+  leftIcon: React.ReactNode;
 }
 
 export const Input: React.FC<InputProps> = ({
