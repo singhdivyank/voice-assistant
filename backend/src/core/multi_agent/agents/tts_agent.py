@@ -1,9 +1,12 @@
+import base64
 import logging
 
 from .base_agent import BaseAgent
+from src.config.settings import get_settings
 from src.core.multi_agent.workflow.state_manager import AgentExecutionState
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 
 class TTSAgent(BaseAgent):
@@ -15,10 +18,8 @@ class TTSAgent(BaseAgent):
     async def _execute_logic(self, state: AgentExecutionState) -> AgentExecutionState:
         """Generate audio responses"""
 
-        from src.config.settings import get_settings
         from src.services.speech import TextToSpeech
 
-        settings = get_settings()
         language = state.source_language
         tts = TextToSpeech(language)
         audio_files = []
@@ -28,8 +29,6 @@ class TTSAgent(BaseAgent):
             question_text = state.translated_content.get("questions_to_user", state.questions)[current_idx]
             
             try:
-                import base64
-
                 audio_bytes = await tts.synthesize(question_text)
                 audio_path = settings.audio_dir / f"question_{current_idx}_{state.execution_id}.mp3"
                 audio_path.write_bytes(audio_bytes)
@@ -42,8 +41,6 @@ class TTSAgent(BaseAgent):
             recommendations_text = state.translated_context.get("recommendations_to_user", state.medication_recommendations)
 
             try:
-                import base64
-
                 audio_bytes = await tts.synthesize(recommendations_text)
                 audio_path = settings.audio_dir / f"recommendations_{state.execution_id}.mp3"
                 audio_path.write_bytes(audio_bytes)

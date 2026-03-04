@@ -1,21 +1,13 @@
 import logging
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph, END
 
 from .state_manager import AgentExecutionState
 from src.config.monitoring import telemetry
-from src.core.multi_agent.agents import (
-    DiagnosisAgent,
-    PrescriptionAgent,
-    QuestionAnswerAgent,
-    STTAgent, 
-    TranslationAgent, 
-    TTSAgent
-)
 from src.utils.exceptions import DocJarvisError
 
 logger = logging.getLogger(__name__)
@@ -25,16 +17,28 @@ class AgentWorkflow:
     """LangGraph-based workflow orchestration"""
 
     def __init__(self):
-        self.agents = {
+        self.agents = self._initialise_agents()
+        self.graph = self._build_graph()
+        self.checkpointer = MemorySaver()
+    
+    def _initialise_agents(self) -> Dict[str, Any]:
+        from src.core.multi_agent.agents.diagnosis_agent import DiagnosisAgent
+        from src.core.multi_agent.agents.medication_agent import MedicationAgent
+        from src.core.multi_agent.agents.prescription_agent import PrescriptionAgent
+        from src.core.multi_agent.agents.qa_agent import QuestionAnswerAgent
+        from src.core.multi_agent.agents.stt_agent import STTAgent
+        from src.core.multi_agent.agents.translation_agent import TranslationAgent
+        from src.core.multi_agent.agents.tts_agent import TTSAgent
+        
+        {
             "stt": STTAgent(),
             "translation": TranslationAgent(),
             "qa": QuestionAnswerAgent(),
             "diagnosis": DiagnosisAgent(),
             "prescription": PrescriptionAgent(),
             "tts": TTSAgent(),
+            "medication": MedicationAgent()
         }
-        self.graph = self._build_graph()
-        self.checkpointer = MemorySaver()
     
     def _build_graph(self) -> StateGraph:
         """Core logic of LangGraph workflow"""
@@ -54,9 +58,9 @@ class AgentWorkflow:
             }
         )
         workflow.add_edge("tts", END)
-        workflow.add_edge("diagnosis", "prescription")
+        workflow.add_edge("diagnosis", "medication")
+        workflow.add_edge("medication", "prescription")
         workflow.add_edge("prescription", "translation")
-        workflow.add_edge("translation", "tts")
         workflow.set_entry_point("stt")
 
         return workflow.compile(checkpointer=self.checkpointer)

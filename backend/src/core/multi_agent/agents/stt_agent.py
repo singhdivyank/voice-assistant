@@ -1,7 +1,7 @@
 import logging
 
 from.base_agent import BaseAgent
-from src.core.multi_agent.workflow import AgentExecutionState
+from src.core.multi_agent.workflow.state_manager import AgentExecutionState
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,8 @@ class STTAgent(BaseAgent):
         from src.services.speech import SpeechRecognizer
         from src.utils.consts import Language
 
-        recognizer = SpeechRecognizer(Language.from_code(state.source_language.value))
+        user_lang = Language.from_code(state.source_language.value)
+        recognizer = SpeechRecognizer(user_lang)
         transcribed_texts = []
 
         for audio_file in state.audio_files:

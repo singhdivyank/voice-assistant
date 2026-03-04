@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import List
 
 from langchain.prompts import ChatPromptTemplate
@@ -15,18 +16,18 @@ class QuestionAnswerAgent(BaseAgent):
 
     def __init__(self):
         super().__init__("qa")
-        self.diagnosis_prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", "You are a medical assessment assistant. Be thorough but concise"),
-                ("human", DIAGNOSIS_PROMPT),
-            ]
-        )
+        self.diagnosis_prompt = ChatPromptTemplate.from_messages([
+            ("system", "You are a medical assessment assistant. Be thorough but concise"),
+            ("human", DIAGNOSIS_PROMPT),
+        ])
     
     async def _execute_logic(self, state: AgentExecutionState) -> AgentExecutionState:
         """Generate questions and manage Q&A flow"""
 
         if not state.questions and state.transcribed_texts:
-            translated_complaints = state.translated_content.get("transcribed_to_english", state.transcribed_texts)
+            translated_complaints = state.translated_content.get(
+                "transcribed_to_english", state.transcribed_texts
+            )
             complaint = " ".join(translated_complaints)
             prompt = self.diagnosis_prompt.format(complaint=complaint)
             response = await self.llm_manager.call_llm(
@@ -37,14 +38,14 @@ class QuestionAnswerAgent(BaseAgent):
             state.questions = questions
             logger.info("Generated %d questions", len(questions))
         
-        if len(state.answers) - len(state.questions) > 0:
+        if len(state.answers) - len(state.questions) >= 0:
             state.conversation_complete = True
         else:
             state.conversation_complete = False
         
         state.agent_results["qa"] = {
-            "question_generated": len(state.questions),
-            "answer_collected": len(state.asnwers),
+            "questions_generated": len(state.questions),
+            "answers_collected": len(state.asnwers),
             "conversation_completed": state.conversation_complete
         }
 
@@ -52,8 +53,6 @@ class QuestionAnswerAgent(BaseAgent):
     
     def _parse_questions(self, response: str) -> List[str]:
         """Parse questions from LLM response"""
-
-        import re
 
         questions = []
         for line in response.split("\n"):
