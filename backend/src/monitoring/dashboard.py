@@ -22,10 +22,9 @@ class MonitoringDashboard:
 
         return {
             "timestamp": datetime.now().isoformat(),
-            "performance": self.performance_monitor.get_performance_summary(),
-            "cache": self.cache_manager.get_stats(),
-            "load_balancing": self.load_balancer.get_load_stats(),
-            "system_metrics": await self._get_system_metrics()
+            "graph_state": "active",
+            "tool_performance": self.performance_monitor.get_performance_summary(),
+            "memory_check": await self._get_system_metrics()
         }
     
     async def _get_system_metrics(self) -> Dict[str, Any]:

@@ -5,14 +5,19 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Query
 from fastapi.exceptions import HTTPException
 
-from src.config.monitoring import telemetry
 from src.monitoring.dashboard import MonitoringDashboard
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 dashboard = MonitoringDashboard()
 
-AGENTS = ["stt", "translation", "qa", "diagnosis", "medication", "prescription", "tts"]
+TOOLS = [
+    "transcribe_audio", 
+    "analyze_symptoms_and_diagnose", 
+    "recommend_medications", 
+    "create_prescription_document",
+    "generate_voice_response"
+]
 
 @router.get("/dashboard")
 async def get_dashboard():
@@ -20,23 +25,22 @@ async def get_dashboard():
 
     try:
         dashboard_data = await dashboard.get_dashboard_data()
-        dashboard_data.update({
-            "dashboard_version": "v2.0",
-            "last_updated": datetime.now().isoformat(),
-            "monitoring_endpoints": {
-                "performance": "/monitoring/performance",
-                "cache": "/monitoring/cache", 
-                "load_balancing": "/monitoring/load-balancing",
-                "agents": "/monitoring/agents",
-                "health": "/monitoring/health"
-            }
-        })
         return dashboard_data
     except HTTPException:
         raise
     except Exception as e:
         logger.error("Failed to get dashboard data: %s", e)
         raise HTTPException(status_code=500, detail="Dashboard data unavailable")
+
+@router.get("/agents")
+async def get_agent_metrics():
+    """get tool-specific performance"""
+
+    metrics = {}
+    for tool_name in TOOLS:
+        metrics[tool_name] = await dashboard.get_agent_performance(tool_name)
+    
+    return metrics
 
 @router.get("/performance")
 async def get_performance_metrics(
@@ -70,153 +74,6 @@ async def get_performance_metrics(
     except Exception as e:
         logger.error("Failed to get performance metrics: %s", e)
         raise HTTPException(status_code=500, detail="Performance metrics unavailable")
-
-@router.get("/cache")
-async def get_cache_statistics():
-    """retrieve intelligent cache stats"""
-
-    try:
-        cache_stats = dashboard.cache_manager.get_stats()
-        cache_stats["agent_configurations"] = dashboard.cache_manager.agent_cache_config
-        cache_stats["recommendations"] = []
-
-        hit_rate = cache_stats.get("hit_rate", 0)
-        if hit_rate < 0.3:
-            cache_stats["recommendations"].append("Low hit rate detected. Consider increasing cache TTL or reviewing cache keys.")
-        
-        utilization = cache_stats.get("memory_usage", {}).get("utilization", 0)
-        if utilization > 0.9:
-            cache_stats["agent_configurations"].append("High cache utilization. Consider increasing max_size")
-
-        return cache_stats
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Failed to get cache statistics: %s", e)
-        raise HTTPException(status_code=500, detail="Cache stats unavailable")
-
-@router.post("/cache/clear")
-async def clear_cache():
-    """clear cache across all agents"""
-
-    cleared_counts = {}
-
-    try:
-        for agent in AGENTS:
-            initial_size = len([k for k in dashboard.cache_manager._cache.keys() if k.startswith(f"{agent}:")])
-            dashboard.cache_manager.clear_agent_cache(agent)
-            final_size = len([k for k in dashboard.cache_manager._cache.keys() if k.startswith(f"{agent}:")])
-            cleared_counts[agent] = initial_size - final_size
-        
-        logger.error("All cache cleared")
-        telemetry.increment_counter("cache_manual_clears", attributes={"scope": "all"})
-
-        return {
-            "status": "all_cache_cleared",
-            "cleared_entries_per_agent": cleared_counts,
-            "total_cleared": sum(cleared_counts.values()),
-            "timestamp": datetime.now().isoformat()
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Failed to clear caches: %s", e)
-        raise HTTPException(status_code=500, detail="Cache clearing failed")
-
-@router.post("/cache/clear/{agent_name}")
-async def clear_agent_cache(agent_name: str):
-    """clear cache for specific agent"""
-    
-    if agent_name not in AGENTS:
-        raise HTTPException(status_code=400, detail=f"Invalid agent name. Must be from: {AGENTS}")
-    
-    try:
-        initial_size = len([k for k in dashboard.cache_manager._cache.keys() if k.startswith(f"{agent_name}:")])
-        dashboard.cache_manager.clear_agent_cache(agent_name)
-        final_size = len([k for k in dashboard.cache_manager._cache.keys() if k.startswith(f"{agent_name}:")])
-        cleared_count = initial_size - final_size
-
-        logger.info("Cache cleared for agent %s: %d entries", agent_name, cleared_count)
-        telemetry.increment_counter("cache_manual_clears", attributes={"agent": agent_name})
-
-        return {
-            "status": "cache_cleared",
-            "agent": agent_name,
-            "entries_cleared": cleared_count,
-            "timestep": datetime.now().isoformat()
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Failed to clear cache for agent %s: %s", agent_name, e)
-        raise HTTPException(status_code=500, detail=f"Cache clearing failed for {agent_name}")
-
-@router.get("/load-balancing")
-async def get_load_balancing_stats():
-    """retrieve load balancing stats for all agents"""
-
-    try:
-        load_stats = dashboard.load_balancer.get_load_stats()
-
-        total_current_load = sum(stats["current_load"] for stats in load_stats.values())
-        total_max_capacity = sum(stats["max_concurrent"] for stats in load_stats.values())
-        overall_utilization = total_current_load / max(1, total_max_capacity)
-        return {
-            "agents": load_stats,
-            "system_summary": {
-                "total_current_load": total_current_load,
-                "total_max_capacity": total_max_capacity,
-                "overall_utilization": round(overall_utilization, 3),
-                "agents_at_capacity": [
-                    agent for agent, stats in load_stats.items() 
-                    if stats["current_load"] >= stats["max_concurrent"]
-                ],
-                "total_queued_requests": sum(stats["queue_size"] for stats in load_stats.values())
-            },
-            "timestamp": datetime.now().isoformat()
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Failed to get load balancing stats: %s", e)
-        raise HTTPException(status_code=500, detail="Load balancing data unavailable")
-
-@router.get("/agents")
-async def get_agent_status():
-    """get the status and health information of all agents"""
-
-    agent_status = {}
-    
-    try:
-        performance_data = dashboard.performance_monitor.get_performance_summary()
-        load_data = dashboard.load_balancer.get_load_stats()
-
-        for agent_name in AGENTS:
-            agent_perf = performance_data.get("agents", {}).get(agent_name, {})
-            agent_load = load_data.get(agent_name, {})
-            health_status = get_health_status(agent_perf, agent_load)
-            agent_status[agent_name] = {
-                "health_status": health_status,
-                "performance": agent_perf,
-                "load_balancing": agent_load,
-                "last_executed": agent_perf.get("total_executions", 0) > 0
-            }
-
-        return {
-            "agents": agent_status,
-            "summary": {
-                "healthy_agents": len([a for a in agent_status.values() if a["health_status"] == "healthy"]),
-                "degraded_agents": len([a for a in agent_status.values() if a["health_status"] == "degraded"]),
-                "unhealthy_agents": len([a for a in agent_status.values() if a["health_status"] == "unhealthy"]),
-                "total_agents": len(agent_status)
-            },
-            "timestamp": datetime.now().isoformat()
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Failed to get agent status: %s", e)
-        raise HTTPException(status_code=500, detail="Agent status unavailable")
 
 @router.get("/health")
 async def get_system_health():

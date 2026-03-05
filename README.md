@@ -14,6 +14,11 @@ docjarvis/
 │   │   │   ├── __init__.py
 │   │   │   ├── main.py          # FastAPI app (artifact above)
 │   │   │   ├── routes/
+│   │   │   ├   ├──multi_agent/
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── health_checks.py
+│   │   │   │   │   ├── monitoring.py
+│   │   │   │   │   └── sessions_v2.py
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── diagnosis.py
 │   │   │   │   ├── sessions.py
@@ -23,7 +28,7 @@ docjarvis/
 │   │   │   │   ├── diagnosis.py
 │   │   │   │   ├── patient.py
 │   │   │   │   ├── session.py
-│   │   │   └── middleware/
+│   │   │   ├── middleware/
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── error_handler.py
 │   │   │   │   └── logging.py
@@ -36,27 +41,25 @@ docjarvis/
 │   │   │   ├── diagnosis.py
 │   │   │   ├── prescription.py
 │   │   │   ├── multi_agent/
-│   │   │   │   ├── agents/
+│   │   │   │   ├── coordinator/
 │   │   │   │   │   ├── __init__.py
-│   │   │   │   │   ├── base_agent.py
-│   │   │   │   │   ├── diagnosis_agent.py
-│   │   │   │   │   ├── medication_agent.py
-│   │   │   │   │   ├── prescription_agent.py
-│   │   │   │   │   ├── qa_agent.py
-│   │   │   │   │   ├── stt_agent.py
-│   │   │   │   │   ├── translation_agent.py
-│   │   │   │   │   ├── tts_agent.py
-│   │   │   │   ├── workflow/
+│   │   │   │   │   ├── agent_coordinator.py
+│   │   │   │   │   ├── state.py
+│   │   │   │   ├── tools/
 │   │   │   │   │   ├── __init__.py
-│   │   │   │   │   ├── graph_builder.py
-│   │   │   │   │   └── state_manager.py
+│   │   │   │   │   ├── analysis_tools.py
+│   │   │   │   │   ├── prescription_tools.py
+│   │   │   │   │   └── voice_tools.py
 │   │   │   │   ├── __init__.py
 │   │   │   │   └── llm_manager.py
+│   │   ├── integration/ 
+│   │   │   ├── __init__.py
+│   │   │   ├── multi_agent_service.py
+│   │   │   ├── route_handlers.py
 │   │   ├── monitoring/
 │   │   │   ├── __init__.py
 │   │   │   ├── cache_manager.py
 │   │   │   ├── dashboard.py
-│   │   │   ├── load_balancer.py
 │   │   │   ├── performance_monitor.py
 │   │   ├── services/      
 │   │   │   ├── __init__.py

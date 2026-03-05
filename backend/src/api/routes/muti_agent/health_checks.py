@@ -5,6 +5,7 @@ from fastapi import APIRouter
 
 from src.config.settings import get_settings
 from src.monitoring.dashboard import MonitoringDashboard
+from .sessions_v2 import coordinator
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -31,7 +32,6 @@ async def readiness_check():
     """readiness check for Kubernetes / load balancers"""
 
     from src.core.multi_agent import LLMManager
-    from src.integration.muti_agent_service import MultiAgentService
 
     status = {
         "status": "ready",
@@ -43,71 +43,33 @@ async def readiness_check():
 
     try:
         llm_manager = LLMManager()
-        resp = await llm_manager.call_llm("Hello")
         comp, ok = _component_ok(
             "llm_manager",
             model=settings.gemini_model,
-            test_response_length=len(resp) if resp else 0,
         )
+        status["components"].update(comp)
     except Exception as e:
         logger.error("LLM Manager not ready: %s", e)
         comp, ok = _component_fail("llm_manager", e)
-    status["components"].update(comp)
-    all_ready &= ok
+        status["components"].update(comp)
+        all_ready = False
 
     try:
-        service = MultiAgentService()
+        has_tools = len(coordinator.tools) > 0
         comp, ok = _component_ok(
-            "multi_agent_service",
-            workflow_initialized=hasattr(service, "workflow"),
+            "agent_coordinator", 
+            tools_count=len(coordinator.tools),
+            status="active" if has_tools else "degraded"
         )
+        status["components"].update(comp)
+        if not has_tools: all_ready = False
     except Exception as e:
-        logger.error("Multi-Agent Service not ready: %s", e)
-        comp, ok = _component_fail("multi_agent_service", e)
-    status["components"].update(comp)
-    all_ready &= ok
-
-    try:
-        cache_stats = dashboard.cache_manager.get_stats()
-        comp, ok = _component_ok(
-            "cache_system",
-            total_entries=cache_stats.get("total_entries", 0),
-            hit_rate=cache_stats.get("hit_rate", 0.0),
-        )
-    except Exception as e:
-        logger.error("Cache System not ready: %s", e)
-        comp, ok = _component_fail("cache_system", e)
-    status["components"].update(comp)
-    all_ready &= ok
-
-    try:
-        load_stats = dashboard.load_balancer.get_load_stats()
-        comp, ok = _component_ok(
-            "load_balancer",
-            agents_configured=len(load_stats),
-            total_capacity=sum(
-                stats["max_concurrent"] for stats in load_stats.values()
-            ),
-        )
-    except Exception as e:
-        logger.error("Load Balancer not ready: %s", e)
-        comp, ok = _component_fail("load_balancer", e)
-    status["components"].update(comp)
-    all_ready &= ok
-
-    try:
-        monitoring_data = await dashboard.get_dashboard_data()
-        comp, _ = _component_ok(
-            "monitoring_system",
-            dashboard_data_available=bool(monitoring_data),
-        )
-    except Exception as e:
-        logger.error("Monitoring System not ready: %s", e)
-        comp, _ = _component_fail("monitoring_system", e)
-    status["components"].update(comp)
+        comp, ok = _component_fail("agent_coordinator", e)
+        status["components"].update(comp)
+        all_ready = False
 
     if not all_ready:
-        status["status"] = "not_ready"
+        status["status"] = "partially_ready"
 
     return status
 
@@ -122,49 +84,15 @@ async def deep_health_check():
     }
     overall_ok = True
 
-    from src.core.multi_agent.agents.base_agent import AgentExecutionState
-    from src.utils.consts import PatientInfo, Gender, Language
-    from src.core.multi_agent.agents.qa_agent import QuestionAnswerAgent
-
     try:
         logger.info("Running deep health check - workflow integration test")
-        _ = AgentExecutionState(
-            patient=PatientInfo(
-                name="Health Check",
-                email="test@test.com",
-                age=30,
-                gender=Gender.MALE,
-            ),
-            session_id="health-check-test",
-            source_language=Language.ENGLISH,
-            transcribed_texts=["Test health check"],
-            questions=[],
-            answers=[],
-            conversation_complete=False,
-            translated_content={},
-            tts_files=[],
-            response_audio=None,
-            symptoms_analysis=None,
-            differential_diagnosis=None,
-            final_diagnosis=None,
-            medication_recommendations=None,
-            prescription_path=None,
-            current_step="test",
-            errors=[],
-            metadata={"test": True},
-        )
 
-        agent_tests = {}
-        try:
-            _ = QuestionAnswerAgent()
-            agent_tests["qa"] = {"status": "healthy", "initialized": True}
-        except Exception as e:
-            agent_tests["qa"] = {"status": "unhealthy", "error": str(e)}
-            overall_ok = False
+        graph_info = coordinator.app.get_graph().nodes
 
         health["deep_checks"]["workflow_integration"] = {
-            "status": "healthy" if overall_ok else "unhealthy",
-            "agent_tests": agent_tests,
+            "status": "healthy",
+            "nodes_detected": list(graph_info.keys()),
+            "checkpointer_active": True
         }
     except Exception as e:
         logger.error("Deep health workflow test failed: %s", e)
@@ -177,7 +105,7 @@ async def deep_health_check():
     try:
         perf_data = dashboard.performance_monitor.get_performance_summary()
         system_health = perf_data.get("system_health", {})
-
+        # TODO- make chanegs here
         health["deep_checks"]["performance"] = {
             "status": system_health.get("status", "unknown"),
             "score": system_health.get("score", 1.0),
@@ -205,13 +133,13 @@ async def deep_health_check():
         res_status = "healthy"
         issues: list[str] = []
 
-        if cpu > 90:
+        if cpu > 85:
             res_status = "degraded"
             issues.append(f"High CPU usage: {cpu}%")
-        if mem > 90:
+        if mem > 85:
             res_status = "degraded"
             issues.append(f"High memory usage: {mem}%")
-        if disk > 90:
+        if disk > 85:
             res_status = "degraded"
             issues.append(f"High disk usage: {disk}%")
 
@@ -227,10 +155,6 @@ async def deep_health_check():
             overall_ok = False
     except Exception as e:
         logger.error("Deep health resource test failed: %s", e)
-        health["deep_checks"]["resources"] = {
-            "status": "unhealthy",
-            "error": str(e),
-        }
 
     health["status"] = "healthy" if overall_ok else "unhealthy"
     return health

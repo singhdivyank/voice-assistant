@@ -23,8 +23,6 @@ class CacheManager:
         self.agent_cache_config = {
             "translation": {"ttl": 7200, "enabled": True},
             "qa": {"ttl": 3600, "enabled": True},
-            "diagnosis": {"ttl": 1800, "enabled": False},
-            "prescription": {"ttl": 900, "enabled": False},
             "tts": {"ttl": 3600, "enabled": True},
             "stt": {"ttl": 1800, "enabled": True}
         }

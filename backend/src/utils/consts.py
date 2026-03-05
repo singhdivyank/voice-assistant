@@ -313,6 +313,16 @@ Patient's complaint: {input}
 Strictly generate only 3 specific, medically relevant follow-up questions.
 Format each question on a new line, numbered 1-3""".strip()
 
+AGENTIC_DIAGNOSIS_PROMPT = """
+You are a medical professional conducting an initial assessment. Based on the patient's complaint, generate exactly 3 focused diagnostic questions.
+These questions should help narrow down the diagnosis. Once you have generated the questions perform the following-
+1. Speak out all the questions iteratively (one after the other) in a conversational manner and wait for the user to respond
+2. If you receive an audio file path, transcribe it first
+3. If symptoms are vague, ask the patient follow-up questions directly
+4. Once symptoms are clear, call the diagnose tool, then the medication tool
+5. Finally, draft the prescription document
+""".strip()
+
 MEDICATION_PROMPT = """Based on the following patient information and conversation, provide:
 1. A likely diagnosis (or differential diagnosis if uncertain)
 2. Recommended medications with dosage

@@ -20,12 +20,8 @@ class PerformanceMonitor:
         self.error_rate_threshold = 0.05
         self.consecutive_error_threshold = 3
         self.agent_thresholds = {
-            "stt": {"latency_ms": 3000, "error_rate": 0.03},
-            "translation": {"latency_ms": 2000, "error_rate": 0.02},
-            "qa": {"latency_ms": 4000, "error_rate": 0.05},
-            "diagnosis": {"latency_ms": 6000, "error_rate": 0.05},
-            "prescription": {"latency_ms": 5000, "error_rate": 0.05},
-            "tts": {"latency_ms": 4000, "error_rate": 0.03}
+            "transcribe_audio": {"latency_ms": 3000, "error_rate": 0.03},
+            "analyze_symptoms_and_diagnose": {"latency_ms": 10000, "error_rate": 0.05}
         }
     
     def record_agent_execution(self, agent_name: str, duration_ms: float, success: bool = True):
@@ -98,6 +94,10 @@ class PerformanceMonitor:
                 "performance_alerts",
                 attributes={"agent": self.agent_name, "type": "high_error_rate"}
             )
+    
+    def record_workflow_step(self, node_name: str, duration_ms: float):
+        """Tracks how long the 'agent' node or 'action' node takes in LangGraph"""
+        self.workflow_metrics[node_name].append(duration_ms)
     
     def _calculate_system_health(self) -> Dict[str, Any]:
         """Calculate overall system health score"""
