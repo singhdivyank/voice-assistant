@@ -31,7 +31,7 @@ class TelemetryManager:
     """Manages OpenTelemetry instrumentation."""
 
     _instance: Optional["TelemetryManager"] = None
-    _initialized: bool = None
+    _initialized: bool = False
 
     def __new__(cls) -> "TelemetryManager":
         """Singleton pattern implementation"""

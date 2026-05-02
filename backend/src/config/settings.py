@@ -66,6 +66,10 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
     ]
 
+    # for Human-In-The-Loop
+    doc_email: str = Field(default="", alias="DOCTOR_EMAIL")
+    mcp_server: str = Field(default="", alias="GMAIL_SERVER")
+
     def setup_dir(self) -> None:
         """Create necessary dictionaries"""
         for dir_path in [self.output_dir, self.audio_dir, self.prescription_dir]:

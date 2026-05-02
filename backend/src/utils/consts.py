@@ -6,6 +6,7 @@ from enum import Enum
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
+from pydantic import BaseModel, Field
 from typing import Any, List, Dict, Optional
 
 
@@ -66,6 +67,22 @@ class Language(Enum):
     def choices(cls) -> list[str]:
         """Return list of language names for UI"""
         return [lang.name.lower() for lang in cls]
+
+
+class WorkflowStep(Enum):
+    """Workflow step enumeration"""
+    
+    WELCOME = "welcome"
+    INITIAL_SYMPTOM = "initial_symptom"
+    QUESTIONS_GENERATED = "questions_generated"
+    QA_IN_PROGRESS = "qa_in_progress"
+    QA_COMPLETE = "qa_complete"
+    RECOMMENDATIONS_GENERATED = "recommendations_generated"
+    AUDIO_GENERATED = "audio_generated"
+    PRESCRIPTION_SENT = "prescription_sent"
+    DOCTOR_REVIEW = "doctor_review"
+    COMPLETED = "completed"
+    ERROR = "error"
 
 
 class Platform:
@@ -303,6 +320,21 @@ class TextToSpeechService(ABC):
         """Synthesize text to audio bytes"""
         pass
 
+
+class GmailSendInput(BaseModel):
+    """Input for Gmail MCP send tool"""
+    to_email: str = Field(..., description="Recipient email address")
+    subject: str = Field(..., description="Email subject")
+    body: str = Field(..., description="Email body content")
+    review_id: str = Field(..., description="Review ID for tracking")
+
+
+class GmailReadInput(BaseModel):
+    """Input for Gmail MCP read tool"""
+    search_query: str = Field(..., description="Gmail search query")
+    max_results: int = Field(default=10, description="Maximum number of results")
+
+
 # Prompt templates
 DIAGNOSIS_PROMPT = """
 You are a medical professional conducting an initial assessment. Based on the patient's complaint, generate exactly 3 focused diagnostic questions.
@@ -326,36 +358,7 @@ Patient information:
 Consultation Summary:
 {conversation}
 
-Provide clear, actionable medical guidance. Include appropriaet disclaimers.
-""".strip()
-
-AGENT_DIAGNOSIS_PROMPT = """
-Analyse the provided ```patient information```, ```complaint```, and ```Q&A summary``` and suggest about:
-1. Symptoms analysis
-2. Differential diagnosis
-3. Most likely diagnosis
-
-patient information:
-- Age: {age}
-- Gender: {gender}
-
-complaint: {complaint}
-Q&A summary: {qa_summary}
-""".strip()
-
-AGENT_MEDICATION_PROMPT = """
-Based on the diagnosis and patient information, provide:
-1. Recommended medication with dosage
-2. Lifestyle recommendations
-3. When to seek emergency care
-4. Follow-up instructions
-
-Patient information: 
-- Age: {age}
-- Gender: {gender}
-
-Diagnosis: {diagnosis}
-Symptoms Analysis: {symptoms}
+Provide clear, actionable medical guidance. Include appropriate disclaimers.
 """.strip()
 
 PRESCRIPTION_TEMPLATE = """
@@ -409,3 +412,27 @@ FORMAT_MAP = {
     '.aiff': 'aiff',
     '.aif': 'aiff'
 }
+
+EMAIL_BODY = """
+<html>
+<body>
+
+<h2>Prescription Review Required</h2>
+<p><strong>Review ID:</strong> {review_id}</p>
+<p><strong>Patient:</strong> {age} year old {gender}</p>
+<h3>Prescription Content:</h3>
+<pre style="background-color: #f5f5f5; padding: 10px; border-radius: 4px;">
+{content}
+</pre>
+
+<h3>Review Instructions:</h3>
+<p>Please reply with one of the following:</p>
+<ul>
+    <li><strong>APPROVE #{review_id}</strong> - To approve as-is</li>
+    <li><strong>MODIFY #{review_id} - [your changes]</strong> - To approve with modifications</li>
+    <li><strong>REJECT #{review_id'} - [reason]</strong> - To reject</li>
+</ul>
+
+</body>
+</html>
+""".strip()
