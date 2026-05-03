@@ -5,7 +5,7 @@ import re
 from typing import AsyncIterator
 
 import google.generativeai as genai
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
 from langchain.callbacks.tracers import LangChainTracer
 from langchain.prompts import ChatPromptTemplate
 

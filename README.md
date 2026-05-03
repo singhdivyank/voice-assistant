@@ -13,16 +13,16 @@ docjarvis/
 │   │   ├── api/
 │   │   │   ├── __init__.py
 │   │   │   ├── main.py          # FastAPI app (artifact above)
+│   │   │   ├── schemas.py
 │   │   │   ├── routes/
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── diagnosis.py
-│   │   │   │   ├── sessions.py
+│   │   │   │   ├── health_checks.py
+│   │   │   │   ├── helpers.py
+│   │   │   │   ├── monitoring.py
 │   │   │   │   ├── prescription.py
-│   │   │   ├── schemas/         # Pydantic models
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── diagnosis.py
-│   │   │   │   ├── patient.py
-│   │   │   │   ├── session.py
+│   │   │   │   ├── sessions.py
+│   │   │   │   ├── workflow_routes.py
 │   │   │   └── middleware/
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── error_handler.py
@@ -34,24 +34,21 @@ docjarvis/
 │   │   ├── core/                
 │   │   │   ├── __init__.py
 │   │   │   ├── diagnosis.py
+│   │   │   ├── llm_manager.py
+│   │   │   ├── mcp_client.py
 │   │   │   ├── prescription.py
-│   │   │   ├── multi_agent/
-│   │   │   │   ├── agents/
+│   │   │   ├── crew_ai/
+│   │   │   │   ├── tools/
 │   │   │   │   │   ├── __init__.py
-│   │   │   │   │   ├── base_agent.py
-│   │   │   │   │   ├── diagnosis_agent.py
-│   │   │   │   │   ├── medication_agent.py
-│   │   │   │   │   ├── prescription_agent.py
-│   │   │   │   │   ├── qa_agent.py
-│   │   │   │   │   ├── stt_agent.py
-│   │   │   │   │   ├── translation_agent.py
-│   │   │   │   │   ├── tts_agent.py
-│   │   │   │   ├── workflow/
+│   │   │   │   │   ├── gmail_mcp_tools.py
+│   │   │   │   │   ├── medical_tools.py
+│   │   │   │   ├── workflows/
 │   │   │   │   │   ├── __init__.py
-│   │   │   │   │   ├── graph_builder.py
-│   │   │   │   │   └── state_manager.py
+│   │   │   │   │   ├── mcp_workflow.py
+│   │   │   │   │   └── session_workflow.py
 │   │   │   │   ├── __init__.py
-│   │   │   │   └── llm_manager.py
+│   │   │   │   ├── medical_agents.py
+│   │   │   │   └── medical_crew.py
 │   │   ├── monitoring/
 │   │   │   ├── __init__.py
 │   │   │   ├── cache_manager.py
@@ -65,18 +62,16 @@ docjarvis/
 │   │   │   ├── translation.py
 │   │   ├── utils/
 │   │   │   ├── __init__.py
+│   │   │   ├── backstories.py
 │   │   │   ├── consts.py
 │   │   │   ├── exceptions.py
-│   │   │   └── file_handler.py
+│   │   │   ├── file_handler.py
+│   │   │   ├── helpers.py
+│   │   │   └── task_descriptions.py
 │   ├── tests/
 │   │   ├── conftest.py
-│   │   ├── unit/
-│   │   │   ├── test_diagnosis.py
-│   │   │   └── test_translation.py
 │   │   ├── integration/
-│   │   │   └── test_api.py
-│   │   └── e2e/
-│   │       └── test_consultation_flow.py
+│   │   └── unit/
 │   ├── pyproject.toml
 │   ├── requirements.txt
 │   └── Dockerfile

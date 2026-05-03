@@ -1,3 +1,10 @@
+from .backstories import (
+    SPEECH_BACKSTORY,
+    QNA_BACKSTORY,
+    TRANSLATION_BACKSTORY,
+    RECOMMENDATION_BACKSTORY,
+    PRESCRIPTION_BACKSTORY
+)
 from .consts import (
     Environment, Gender, Language, Platform, 
     ConversationTurn, PatientInfo, DiagnosisSession, SessionStore, 
@@ -11,8 +18,39 @@ from .exceptions import (
     MedicationError, FileOperationError, ConfigurationError
 )
 from .file_handler import FileHandler
+from .helpers import (
+    _extract_questions, 
+    _extract_transcription, 
+    _extract_review, 
+    _extract_doctor_response, 
+    _extract_diagnosis, 
+    _extract_audio,
+    _format_qa_summary,
+    _format_conversation,
+)
+from .task_descriptions import (
+    DIAGNOSIS_TASK_DESCRIPTION,
+    INTRO_TASK_DESCRIPTION,
+    MEDICATION_TASK_DESCRIPTION,
+    PRESCRIPTION_TASK_DESCRIPTION,
+    PROCESS_RESPONSE_TASK_DESCRIPTION,
+    RECOMMENDATIONS_TASK_DESCRIPTION,
+    STT_TASK_DESCRIPTION,
+    TRANSLATION_DESCRIPTION,
+    TRANSLATION_TASK_DESCRIPTION,
+    QUESTION_TASK_DESCRIPTION
+)
+
 
 __all__ = [
+    "_extract_questions", 
+    "_extract_transcription", 
+    "_extract_review", 
+    "_extract_doctor_response", 
+    "_extract_diagnosis", 
+    "_extract_audio",
+    "_format_qa_summary",
+    "_format_conversation",
     "Environment", 
     "Gender", 
     "Language", 
@@ -39,5 +77,20 @@ __all__ = [
     "MedicationError", 
     "FileOperationError", 
     "ConfigurationError",
-    "FileHandler"
+    "FileHandler",
+    "DIAGNOSIS_TASK_DESCRIPTION",
+    "INTRO_TASK_DESCRIPTION",
+    "MEDICATION_TASK_DESCRIPTION",
+    "PRESCRIPTION_BACKSTORY",
+    "PRESCRIPTION_TASK_DESCRIPTION",
+    "PROCESS_RESPONSE_TASK_DESCRIPTION",
+    "RECOMMENDATION_BACKSTORY",
+    "RECOMMENDATIONS_TASK_DESCRIPTION",
+    "SPEECH_BACKSTORY",
+    "STT_TASK_DESCRIPTION",
+    "TRANSLATION_BACKSTORY",
+    "TRANSLATION_DESCRIPTION",
+    "TRANSLATION_TASK_DESCRIPTION",
+    "QNA_BACKSTORY",
+    "QUESTION_TASK_DESCRIPTION",
 ]

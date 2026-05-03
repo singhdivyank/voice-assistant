@@ -10,6 +10,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from fastapi.responses import StreamingResponse
 
+from .helpers import _translate_questions, _translate_text_to_user, _translate_text_to_english
 from src.api.schemas import (
     SessionCreate, SessionResponse, SessionState,
     SubmitAnswer, MedicationResponse
@@ -19,7 +20,6 @@ from src.config.settings import get_settings
 from src.config.monitoring import telemetry
 from src.services.session_store import SessionStore, get_session_store
 from src.services.speech import SpeechService
-from src.services.translation import TranslationService
 from src.utils.consts import Gender, Language, DiagnosisSession
 from src.utils.file_handler import FileHandler
 
@@ -29,45 +29,6 @@ settings = get_settings()
 
 diagnosis_service = DiagnosisService()
 file_handler = FileHandler()
-
-
-def _translate_questions(questions: list[str], lang_code: str) -> list[str]:
-    """Translate question list to user language if not English."""
-    if not questions or lang_code == "en":
-        return questions
-    try:
-        lang = Language.from_code(lang_code)
-        svc = TranslationService(target_language=lang)
-        return [svc.to_user_language(q) for q in questions]
-    except Exception as e:
-        logger.warning("Translation failed for questions: %s", e)
-        return questions
-
-
-def _translate_text_to_user(text: str, lang_code: str) -> str:
-    """Translate text to user language if not English."""
-    if not text or lang_code == "en":
-        return text
-    try:
-        lang = Language.from_code(lang_code)
-        svc = TranslationService(target_language=lang)
-        return svc.to_user_language(text)
-    except Exception as e:
-        logger.warning("Translation failed: %s", e)
-        return text
-
-
-def _translate_text_to_english(text: str, lang_code: str) -> str:
-    """Translate text from user language to English for LLM."""
-    if not text or lang_code == "en":
-        return text
-    try:
-        lang = Language.from_code(lang_code)
-        svc = TranslationService(target_language=lang)
-        return svc.to_english(text)
-    except Exception as e:
-        logger.warning("Translation to English failed: %s", e)
-        return text
 
 
 @router.post("/", response_model=SessionResponse)
@@ -103,7 +64,10 @@ async def create_session(
         session.language = request.language or "en"
         await store.save(session)
 
-        questions_for_client = _translate_questions(session.questions, session.language)
+        questions_for_client = _translate_questions(
+            questions=session.questions, 
+            user_lang=Language.from_code(session.language)
+        )
         logger.info("Created session %s, language=%s", session_id, session.language)
 
         return SessionResponse(
@@ -146,7 +110,7 @@ async def transcribe_and_respond(
             speech_service = SpeechService(language=Language.from_code(lang))
             transcribed_text = speech_service.listen_from_file(temp_audio_path)
             logger.info("Transcribed audio: %s", transcribed_text[:100])
-            answer_for_llm = _translate_text_to_english(transcribed_text, lang)
+            answer_for_llm = _translate_text_to_english(transcribed_text, Language.from_code(lang))
 
             if not session.questions and not session.initial_complaint:
                 session.initial_complaint = answer_for_llm
@@ -242,16 +206,21 @@ async def get_session(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    lang = getattr(session, "language", "en")
-    questions_for_client = _translate_questions(session.questions, lang)
+    lang_code = getattr(session, "language", "en")
+    user_lang = Language.from_code(lang_code)
+    
+    questions_for_client = _translate_questions(
+        questions=session.questions, 
+        user_lang=user_lang
+    )
     conversation_for_client = [
         {
-            "question": _translate_text_to_user(c.question, lang),
-            "answer": _translate_text_to_user(c.answer, lang),
+            "question": _translate_text_to_user(c.question, lang_code),
+            "answer": _translate_text_to_user(c.answer, lang_code),
         }
         for c in session.conversation
     ]
-    medication_for_client = _translate_text_to_user(session.medication or "", lang) or session.medication
+    medication_for_client = _translate_text_to_user(session.medication or "", lang_code) or session.medication
 
     prescription_path = None
     if session.status == "completed":
@@ -264,7 +233,7 @@ async def get_session(
         status=session.status,
         patient_age=session.patient.age,
         patient_gender=session.patient.gender.value,
-        language=lang,
+        language=lang_code,
         initial_complaint=session.initial_complaint,
         questions=questions_for_client,
         conversation=conversation_for_client,
@@ -288,8 +257,9 @@ async def submit_answer(
     if session.status == "completed":
         raise HTTPException(status_code=400, detail="Session already completed")
 
-    lang = getattr(session, "language", "en")
-    answer_for_llm = _translate_text_to_english(request.answer, lang)
+    lang_code = getattr(session, "language", "en")
+    usr_lang = Language.from_code(lang_code)
+    answer_for_llm = _translate_text_to_english(request.answer, usr_lang)
 
     with telemetry.span("api_submit_answer", {"session_id": session_id}):
         diagnosis_service.add_response(
@@ -303,7 +273,7 @@ async def submit_answer(
         next_question = None
         if session.current_question_index < len(session.questions):
             next_question_en = session.questions[session.current_question_index]
-            next_question = _translate_text_to_user(next_question_en, lang)
+            next_question = _translate_text_to_user(next_question_en, lang_code)
 
         return {
             "status": "accepted",
@@ -327,7 +297,7 @@ async def complete_session(
 
     if session.status == "completed" and session.medication:
         med_en = session.medication
-        med_user = _translate_text_to_user(med_en, lang) if lang != "en" else med_en
+        med_user = _translate_text_to_user(med_en, lang)
         return MedicationResponse(
             session_id=session_id,
             medication=med_user,
@@ -338,7 +308,7 @@ async def complete_session(
         medication_en = diagnosis_service.complete_session(session)
         await store.save(session)
 
-        medication_user = _translate_text_to_user(medication_en, lang) if lang != "en" else medication_en
+        medication_user = _translate_text_to_user(medication_en, lang)
         return MedicationResponse(
             session_id=session_id,
             medication=medication_user,
