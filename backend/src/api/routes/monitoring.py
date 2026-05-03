@@ -1,16 +1,16 @@
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Query
 from fastapi.exceptions import HTTPException
 
+from src.api.routes.helpers import get_health_status
 from src.config.monitoring import telemetry
-from src.monitoring.dashboard import MonitoringDashboard
+from src.monitoring.dashboard import monitoring_dashboard
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-dashboard = MonitoringDashboard()
 
 AGENTS = ["stt", "translation", "qa", "diagnosis", "medication", "prescription", "tts"]
 
@@ -19,7 +19,7 @@ async def get_dashboard():
     """get monitoring dashboard for with all metrics"""
 
     try:
-        dashboard_data = await dashboard.get_dashboard_data()
+        dashboard_data = await monitoring_dashboard.get_dashboard_data()
         dashboard_data.update({
             "dashboard_version": "v2.0",
             "last_updated": datetime.now().isoformat(),
@@ -46,21 +46,18 @@ async def get_performance_metrics(
     """get detailed performance metrics for agents"""
 
     try:
-        performance_data = dashboard.performance_monitor.get_performance_summary()
+        performance_data = monitoring_dashboard.performance_monitor.get_performance_summary()
         if agent_name:
             perfomance = performance_data.get("agents", {})
-            if perfomance and agent_name in perfomance:
-                metrics = perfomance.get(agent_name, {})
-                filtered_data = {
-                   "agent": agent_name,
-                    "metrics": metrics,
-                    "system_health": performance_data.get("system_health", {}),
-                    "query_params": {"agent_name": agent_name, "hours": hours}
-                }
-                
-                return filtered_data
-        else:
-            raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
+            if agent_name not in perfomance:
+                raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
+            
+            return {
+                "agent": agent_name,
+                "metrics": perfomance[agent_name],
+                "system_health": performance_data.get("system_health", {}),
+                "query_params": {"agent_name": agent_name, "hours": hours}
+            }
         
         performance_data["query_params"] = {"hours": hours}
         performance_data["available_agents"] = list(performance_data.get("agents", {}).keys())
@@ -76,8 +73,8 @@ async def get_cache_statistics():
     """retrieve intelligent cache stats"""
 
     try:
-        cache_stats = dashboard.cache_manager.get_stats()
-        cache_stats["agent_configurations"] = dashboard.cache_manager.agent_cache_config
+        cache_stats = monitoring_dashboard.cache_manager.get_stats()
+        cache_stats["agent_configurations"] = monitoring_dashboard.cache_manager.agent_cache_config
         cache_stats["recommendations"] = []
 
         hit_rate = cache_stats.get("hit_rate", 0)
@@ -86,7 +83,7 @@ async def get_cache_statistics():
         
         utilization = cache_stats.get("memory_usage", {}).get("utilization", 0)
         if utilization > 0.9:
-            cache_stats["agent_configurations"].append("High cache utilization. Consider increasing max_size")
+            cache_stats["recommendations"].append("High cache utilization. Consider increasing max_size")
 
         return cache_stats
     except HTTPException:
@@ -103,9 +100,9 @@ async def clear_cache():
 
     try:
         for agent in AGENTS:
-            initial_size = len([k for k in dashboard.cache_manager._cache.keys() if k.startswith(f"{agent}:")])
-            dashboard.cache_manager.clear_agent_cache(agent)
-            final_size = len([k for k in dashboard.cache_manager._cache.keys() if k.startswith(f"{agent}:")])
+            initial_size = len([k for k in monitoring_dashboard.cache_manager._cache.keys() if k.startswith(f"{agent}:")])
+            monitoring_dashboard.cache_manager.clear_agent_cache(agent)
+            final_size = len([k for k in monitoring_dashboard.cache_manager._cache.keys() if k.startswith(f"{agent}:")])
             cleared_counts[agent] = initial_size - final_size
         
         logger.error("All cache cleared")
@@ -131,9 +128,9 @@ async def clear_agent_cache(agent_name: str):
         raise HTTPException(status_code=400, detail=f"Invalid agent name. Must be from: {AGENTS}")
     
     try:
-        initial_size = len([k for k in dashboard.cache_manager._cache.keys() if k.startswith(f"{agent_name}:")])
-        dashboard.cache_manager.clear_agent_cache(agent_name)
-        final_size = len([k for k in dashboard.cache_manager._cache.keys() if k.startswith(f"{agent_name}:")])
+        initial_size = len([k for k in monitoring_dashboard.cache_manager._cache.keys() if k.startswith(f"{agent_name}:")])
+        monitoring_dashboard.cache_manager.clear_agent_cache(agent_name)
+        final_size = len([k for k in monitoring_dashboard.cache_manager._cache.keys() if k.startswith(f"{agent_name}:")])
         cleared_count = initial_size - final_size
 
         logger.info("Cache cleared for agent %s: %d entries", agent_name, cleared_count)
@@ -143,7 +140,7 @@ async def clear_agent_cache(agent_name: str):
             "status": "cache_cleared",
             "agent": agent_name,
             "entries_cleared": cleared_count,
-            "timestep": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat()
         }
     except HTTPException:
         raise
@@ -156,7 +153,7 @@ async def get_load_balancing_stats():
     """retrieve load balancing stats for all agents"""
 
     try:
-        load_stats = dashboard.load_balancer.get_load_stats()
+        load_stats = monitoring_dashboard.load_balancer.get_load_stats()
 
         total_current_load = sum(stats["current_load"] for stats in load_stats.values())
         total_max_capacity = sum(stats["max_concurrent"] for stats in load_stats.values())
@@ -188,8 +185,8 @@ async def get_agent_status():
     agent_status = {}
     
     try:
-        performance_data = dashboard.performance_monitor.get_performance_summary()
-        load_data = dashboard.load_balancer.get_load_stats()
+        performance_data = monitoring_dashboard.performance_monitor.get_performance_summary()
+        load_data = monitoring_dashboard.load_balancer.get_load_stats()
 
         for agent_name in AGENTS:
             agent_perf = performance_data.get("agents", {}).get(agent_name, {})
@@ -223,9 +220,9 @@ async def get_system_health():
     """get overall system health score and status"""
 
     try:
-        performance_data = dashboard.performance_monitor.get_performance_summary()
-        cache_stats = dashboard.cache_manager.get_stats()
-        load_stats = dashboard.load_balancer.get_load_stats()
+        performance_data = monitoring_dashboard.performance_monitor.get_performance_summary()
+        cache_stats = monitoring_dashboard.cache_manager.get_stats()
+        load_stats = monitoring_dashboard.load_balancer.get_load_stats()
         system_health = performance_data.get("system_health", {})
 
         health_components = {
@@ -246,7 +243,7 @@ async def get_system_health():
         health_data = {
             **system_health,
             "components": health_components,
-            "recommendation": [],
+            "recommendations": [],
             "timestamp": datetime.now().isoformat()
         }
 
@@ -263,20 +260,3 @@ async def get_system_health():
     except Exception as e:
         logger.error("Failed to get system health: %s", e)
         raise HTTPException(status_code=500, detail="System health unavailable")
-
-def get_health_status(agent_perf: Dict[str, Any], agent_load: Dict[str, Any]) -> str:
-    """initialise health status from obtained performance stats"""
-    
-    health_status = "healthy"
-    
-    success_rate = agent_perf.get("success_rate", 1.0)
-    p95_latency = agent_perf.get("p95_ms", 0)
-    current_load = agent_load.get("current_load", 0)
-    max_load = agent_load.get("max_concurrent", 1)
-    
-    if success_rate < 0.9 or p95_latency > 10000 or current_load >= max_load:
-        health_status = "unhealthy"
-    elif success_rate < 0.95 or p95_latency > 5000 or current_load / max_load > 0.8:
-        health_status = "degraded"
-    
-    return health_status

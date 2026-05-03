@@ -1,5 +1,6 @@
 """classes for crewai tools and agents"""
 
+import asyncio
 import base64
 import json
 import re
@@ -48,7 +49,7 @@ class TextToSpeechTool(BaseTool):
 
             language = Language.from_code(language_code)
             tts = TextToSpeech(language)
-            audio_bytes = tts.synthesize(text)
+            audio_bytes = asyncio.run(tts.synthesize(text))
 
             if not filename:
                 file_id = uuid.uuid4().hex[:8]
@@ -100,7 +101,7 @@ class QuestionGenerationTool(BaseTool):
             from src.utils.consts import DIAGNOSIS_PROMPT
 
             prompt = DIAGNOSIS_PROMPT.format(input=complaint)
-            response = llm_manager.call_llm(prompt, {"agent": "qa"})
+            response = asyncio.run(llm_manager.call_llm(prompt, {"agent": "qa"}))
 
             for line in response.split("\n"):                
                 cleaned_text = re.sub(r"^\d+[\.\)]\s*", "", line.strip())
@@ -129,7 +130,7 @@ class MedicationTool(BaseTool):
                 gender=patient_gender,
                 conversation=diagnosis
             )
-            response = llm_manager.call_llm(prompt, {"agent": "medication"})
+            response = asyncio.run(llm_manager.call_llm(prompt, {"agent": "medication"}))
             return response
         except Exception as e:
             return f"Medication recommendation failed: {str(e)}"

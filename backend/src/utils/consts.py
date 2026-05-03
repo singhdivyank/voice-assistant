@@ -85,11 +85,24 @@ class WorkflowStep(Enum):
     ERROR = "error"
 
 
+class ReviewStatus(Enum):
+    """Review status enumeration"""
+
+    PENDING = "pending"
+    SENT = "sent"
+    IN_REVIEW = "in_review"
+    APPROVED = "approved"
+    MODIFIED = "modified"
+    REJECTED = "rejected"
+    EXPIRED = "expired"
+    ERROR = "error"
+
+
 class Platform:
     """Platform detection utility"""
     
     MAC = "Darwin"
-    WINDOWS = "windows"
+    WINDOWS = "Windows"
     LINUX = "Linux"
 
     @classmethod
@@ -231,7 +244,7 @@ class AgentPerformanceMetrics:
         else:
             self.total_duration_ms += duration_ms
             self.min_duration_ms = min(self.min_duration_ms, duration_ms)
-            self.max_duration_ms = min(self.max_duration_ms, duration_ms)
+            self.max_duration_ms = max(self.max_duration_ms, duration_ms)
             self.average_duration_ms = self.total_duration_ms / max(1, self.total_executions - self.error_count)
             self._update_durations(duration_ms)
             self._calc_percentile()
@@ -250,8 +263,8 @@ class AgentPerformanceMetrics:
             sorted_durations = sorted(self.recent_durations)
             n = len(sorted_durations)
             self.p50_ms = sorted_durations[int(n * 0.5)]
-            self.p95_ms = sorted_durations[int(n * 0.95)]
-            self.p99_ms = sorted_durations[int(n * 0.99)]
+            self.p95_ms = sorted_durations[min(int(n * 0.95), n - 1)]
+            self.p99_ms = sorted_durations[min(int(n * 0.99), n - 1)]
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert metrics to dictionary for serialization"""
@@ -430,9 +443,11 @@ EMAIL_BODY = """
 <ul>
     <li><strong>APPROVE #{review_id}</strong> - To approve as-is</li>
     <li><strong>MODIFY #{review_id} - [your changes]</strong> - To approve with modifications</li>
-    <li><strong>REJECT #{review_id'} - [reason]</strong> - To reject</li>
+    <li><strong>REJECT #{review_id} - [reason]</strong> - To reject</li>
 </ul>
 
 </body>
 </html>
 """.strip()
+
+TIMEOUT = 300

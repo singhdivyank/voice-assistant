@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from crewai_tools import BaseTool
 
-from .mcp_client import GMailMCPClient
+from src.core.mcp_client import GMailMCPClient
 from src.utils.consts import GmailSendInput, GmailReadInput
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ class GMailMCPSendTool(BaseTool):
                 asyncio.run(gmail_client.connect())
             
             result = asyncio.run(gmail_client.send_email(
-                to=to,
+                to_email=to,
                 subject=subject,
                 body=body
             ))

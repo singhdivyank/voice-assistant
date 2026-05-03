@@ -75,9 +75,9 @@ class PerformanceMonitor:
         """Check if agent performance exceeds thresholds"""
 
         metrics = self.agent_metrics[self.agent_name]
-        thresholds = self.agent_metrics.get(self.agent_name, {})
-
+        thresholds = self.agent_thresholds.get(self.agent_name, {})
         latency_threshold = thresholds.get("latency_ms", self.latency_threshold)
+        
         if metrics.p95_ms > latency_threshold:
             logger.warning(
                 "High latency alert: Agent %s P95 latency %.2fms exceeds threshold %.2fms",

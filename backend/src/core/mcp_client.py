@@ -21,21 +21,21 @@ class GMailMCPClient:
         """Connect to Gmail MCP server"""
 
         try:
-            # import mcp_client
-            # self.client = await mcp_client.connect(self.mcp_endpoint)
+            import mcp_client
+            self.client = await mcp_client.connect(self.mcp_endpoint)
             self.connected = True
             logger.info("Connected to GMail MCP server")
         except Exception as e:
             logger.error(f"Failed to connect to server")
             raise
     
-    async def send_email(self, to: str, subject: str, body: str) -> Dict[str, Any]:
+    async def send_email(self, to_email: str, subject: str, body: str) -> Dict[str, Any]:
         """send email via GMail MCP server"""
 
         mcp_request = {
             "method": "gmail/send",
             "params": {
-                "to": to,
+                "to_email": to_email,
                 "subject": subject,
                 "body": body,
                 "format": "html"
@@ -43,7 +43,7 @@ class GMailMCPClient:
         }
 
         try:
-            # await self.client.call(mcp_request)
+            await self.client.call(mcp_request)
             message_id = f"msg_{uuid.uuid4().hex[:12]}"
             return {
                 "success": True,
@@ -69,9 +69,8 @@ class GMailMCPClient:
         results = []
 
         try:
-            # result = await self.client.call(mcp_request)
-            # results.append(result)
-            return results
+            result = await self.client.call(mcp_request)
+            results.append(result)
         except Exception as e:
             logger.error(f"GMail MCP read failed: {e}")
             return []
@@ -88,7 +87,7 @@ class GMailMCPClient:
         }
         
         try:
-            # await self.client.call(mcp_request)
+            await self.client.call(mcp_request)
             return {}
         except Exception as e:
             logger.error(f"Gmail MCP get thread failed: {e}")

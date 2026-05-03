@@ -72,7 +72,7 @@ class LLMManager:
     async def stream_llm(self, prompt: str, context: Dict[str, Any] = None) -> AsyncIterator[str]:
         """Streaming LLM calls"""
 
-        telemetry.increment_counter("llm_requests", atributes={"type": "stream"})
+        telemetry.increment_counter("llm_requests", attributes={"type": "stream"})
 
         try:
             with telemetry.span("llm_stream_generation", context or {}):

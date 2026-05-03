@@ -6,9 +6,8 @@ import re
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from src.core.crew_ai.tools.mcp_client import GMailMCPClient
+from src.core.mcp_client import GMailMCPClient
 from src.config.settings import get_settings
-from src.utils.consts import EMAIL_BODY
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -69,7 +68,30 @@ class MCPWorkflowManager:
             logger.error("Failed to send prescription for review: %s", e)
             raise
     
+    async def await_review_result(self, review_id: str) -> Dict[str, Any]:
+        """Wait for doctor response with timeout."""
+
+        from src.utils.consts import TIMEOUT
+
+        start_time = datetime.now()
+
+        while (datetime.now() - start_time).total_seconds() < TIMEOUT:
+            review = self.pending_reviews.get(review_id)
+
+            if review and review.get("status") == "COMPLETED":
+                return review.get("doctor_response", {})
+            
+            await asyncio.sleep(self.POLL_INTERVAL_SECONDS)
+        
+        return {
+            "action": "TIMEOUT",
+            "review_id": review_id,
+            "message": "Doctor dod not respond in time"
+        }
+
     def _build_review_email_body(self, prescription_data: Dict[str, Any]) -> str:
+        from src.utils.consts import EMAIL_BODY
+
         return EMAIL_BODY.format(
             review_id=prescription_data.get("review_id"),
             age=prescription_data.get("patient_age"),
@@ -145,11 +167,43 @@ class MCPWorkflowManager:
             )
 
             del self.pending_reviews[review_id]
-            # await self._handle_doctor_action(review_id, action_data)
+            await self._handle_doctor_action(review_id, action_data)
         except Exception as e:
             logger.error(
                 "Error processing doctor response for %s: %s", review_id, e
             )
+    
+    async def _handle_doctor_action(self, review_id: str, action_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle doctor's action and return outcome"""
+
+        action = action_data["action"]
+        
+        # approved
+        if action == "APPROVED":
+            outcome = {
+                "action_taken": "prescription_finalized",
+                "message": "Prescription approved and finalized",
+                "next_steps": ["deliver_to_patient", "update_medical_records"]
+            }
+        # modified   
+        elif action == "MODIFIED":
+            outcome = {
+                "action_taken": "prescription_modified",
+                "modifications": action_data.get("modifications", ""),
+                "message": "Prescription modified per doctor's instructions",
+                "next_steps": ["regenerate_prescription", "deliver_to_patient"]
+            }
+        # rejected   
+        else:
+            outcome = {
+                "action_taken": "prescription_rejected",
+                "reason": action_data.get("reason", ""),
+                "message": "Prescription rejected by doctor",
+                "next_steps": ["notify_patient", "schedule_follow_up", "restart_consultation"]
+            }
+        
+        # Log the outcome for tracking
+        logger.info(f"Doctor action handled for {review_id}: {action} -> {outcome['action_taken']}")
 
     def _parse_action(
         self, email_content: str, review_id: str
