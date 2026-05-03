@@ -35,7 +35,9 @@ class Settings(BaseSettings):
     base_dir: Path = Path(__file__).parent.parent.parent
     output_dir: Path = Field(default_factory=lambda: Path("outputs"))
     audio_dir: Path = Field(default_factory=lambda: Path("outputs/audio"))
-    prescription_dir: Path = Field(default_factory=lambda: Path("outputs/prescriptions"))
+    prescription_dir: Path = Field(
+        default_factory=lambda: Path("outputs/prescriptions")
+    )
 
     # LLM Configurations
     name: str = "DocJarvis-llm"
@@ -45,7 +47,7 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 2048
 
     # LangSmith monitoring
-    langsmith_api_key: Optional[str] = Field(default=None, alias="LANGSMITH_API_KEY")
+    langsmith_api_key: str = Field(default="", alias="LANGSMITH_API_KEY")
     langsmith_project: str = Field(default="", alias="LANGSMITH_PROJECT")
     langsmith_tracing: bool = False
 
@@ -60,7 +62,7 @@ class Settings(BaseSettings):
 
     # CORS origins
     origins = [
-        "https://localhost:3000", 
+        "https://localhost:3000",
         "http://localhost:3000",
         "https://127.0.0.1:3000",
         "http://127.0.0.1:3000",
@@ -74,6 +76,7 @@ class Settings(BaseSettings):
         """Create necessary dictionaries"""
         for dir_path in [self.output_dir, self.audio_dir, self.prescription_dir]:
             dir_path.mkdir(parents=True, exist_ok=True)
+
 
 @lru_cache()
 def get_settings() -> Settings:

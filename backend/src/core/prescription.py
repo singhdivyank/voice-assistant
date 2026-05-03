@@ -39,7 +39,7 @@ class PrescriptionGenerator:
                 raise FileOperationError(
                     f"Could not generate prescription: {error}"
                 ) from error
-    
+
     def format_prescription(self, session: DiagnosisSession) -> str:
         """Format prescription's content."""
 
@@ -69,7 +69,7 @@ class PrescriptionGenerator:
 
     def cleanup(self, session_id: str) -> None:
         """Remove prescription file for a session."""
-        
+
         file_path = self.output_dir / f"prescription_{session_id}.txt"
         self.file_handler.safe_delete(file_path)
 
@@ -88,7 +88,7 @@ class PrescriptionService:
         """Get the path to current prescription file."""
 
         return settings.prescription_dir / f"prescription_{session_id}.txt"
-    
+
     def delete_prescription(self, session_id: str) -> None:
         """Delete a prescription file."""
 

@@ -28,7 +28,12 @@ class PerformanceMonitor:
             "tts": {"latency_ms": 4000, "error_rate": 0.03}
         }
     
-    def record_agent_execution(self, agent_name: str, duration_ms: float, success: bool = True):
+    def record_agent_execution(
+        self, 
+        agent_name: str, 
+        duration_ms: float, 
+        success: bool = True
+    ):
         """Record agent execution metrics"""
 
         self.agent_name = agent_name
@@ -114,9 +119,13 @@ class PerformanceMonitor:
 
             if metrics.success_rate - 0.95 < 0:
                 agent_score -= (0.95 - metrics.success_rate) * 2
-                issues.append(f"Agent {agent_name} has high error rate: {(1-metrics.success_rate)*100:.1f}%")
+                issues.append(f"Agent {agent_name} has high error rate: {
+                    (1-metrics.success_rate)*100:.1f
+                }%")
             
-            threshold = self.agent_thresholds.get(agent_name, {}).get("latency_ms", self.latency_threshold)
+            threshold = self.agent_thresholds\
+                .get(agent_name, {})\
+                    .get("latency_ms", self.latency_threshold)
             if metrics.p95_ms > threshold:
                 agent_score -= min(0.3, (metrics.p95_ms - threshold) / threshold * 0.5)
                 issues.append(f"Agent {agent_name} has high latency: {metrics.p95_ms:.0f}ms")

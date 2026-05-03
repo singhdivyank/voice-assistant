@@ -9,14 +9,14 @@ from deep_translator import GoogleTranslator
 from deep_translator.exceptions import (
     TranslationNotFound,
     NotValidPayload,
-    RequestError
+    RequestError,
 )
+from langdetect import detect
 
 from src.config.settings import get_settings
 from src.config.monitoring import telemetry, timed_operation
 from src.utils.consts import Language, MESSAGES
 from src.utils.exceptions import TranslationError, NetworkError
-
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -35,34 +35,34 @@ class TranslationService:
     def is_english(self) -> bool:
         """Check if target language is English."""
         return self.target_language == Language.ENGLISH
-    
+
     @property
     def language_code(self) -> str:
         """Get the language code"""
         return self.target_language.value
-    
+
     @property
     def language_name(self) -> str:
         """Get the language name"""
         return self.target_language.name.title()
-    
+
     def _get_cache_key(self, text: str, to_english: bool) -> str:
         """Generate cache key for translation"""
         direction = "to_en" if to_english else f"to_{self.language_code}"
         return f"{direction}:{hash(text)}"
-    
+
     def _get_cache(self, text: str, to_english: bool) -> Optional[str]:
         """Get cached translation if available"""
         key = self._get_cache_key(text, to_english)
         return self._translation_cache.get(key)
-    
+
     def _set_cache(self, text: str, to_english: bool, result: str) -> None:
         """Cache a translation result"""
         if len(self._translation_cache) >= self.cache_size:
             keys = list(self._translation_cache.keys())
-            for key in keys[:len(keys)//2]:
+            for key in keys[: len(keys) // 2]:
                 del self._translation_cache[key]
-        
+
         key = self._get_cache_key(text, to_english)
         self._translation_cache[key] = result
 
@@ -74,15 +74,15 @@ class TranslationService:
 
         if self.is_english:
             return text
-        
+
         cached = self._get_cache(text, to_english)
         if cached:
             logger.debug("Translation cache hit")
             return cached
-        
+
         telemetry.increment_counter(
             "translation_requests",
-            attributes={"direction": "to_english" if to_english else "to_user"}
+            attributes={"direction": "to_english" if to_english else "to_user"},
         )
 
         source_lang = "en" if not to_english else self.language_code
@@ -101,19 +101,27 @@ class TranslationService:
             return result
         except RequestError as e:
             logger.error("Network error during translation: %s", e)
-            telemetry.increment_counter("translation_errors", attributes={"type": "network"})
+            telemetry.increment_counter(
+                "translation_errors", attributes={"type": "network"}
+            )
             raise NetworkError(f"Translation service unavailable: {e}") from e
         except NotValidPayload as e:
             logger.error("Invalid text for translation: %s", e)
-            telemetry.increment_counter("translation_errors", attributes={"type": "invalid"})
+            telemetry.increment_counter(
+                "translation_errors", attributes={"type": "invalid"}
+            )
             raise TranslationError(f"Invalid text for translation: {e}") from e
         except TranslationNotFound as e:
             logger.error("Translation not found: %s", e)
-            telemetry.increment_counter("translation_errors", attributes={"type": "not_found"})
+            telemetry.increment_counter(
+                "translation_errors", attributes={"type": "not_found"}
+            )
             raise TranslationError(f"Translation not available: {e}") from e
         except (ValueError, RuntimeError) as e:
             logger.error("Translation failed: %s", e)
-            telemetry.increment_counter("translation_errors", attributes={"type": "unknown"})
+            telemetry.increment_counter(
+                "translation_errors", attributes={"type": "unknown"}
+            )
             raise TranslationError(f"Failed to translate text: {e}") from e
 
     async def translate_async(self, text: str, to_english: bool = False) -> str:
@@ -122,11 +130,11 @@ class TranslationService:
         return await loop.run_in_executor(
             None, lambda: self.translate(text, to_english)
         )
-    
+
     def to_english(self, text: str) -> str:
         """Convinience method to translate to English for LLM"""
         return self.translate(text=text, to_english=True)
-    
+
     async def to_english_async(self, text: str) -> str:
         """Async convinience method to translate to English for LLM"""
         return await self.translate(text=text, to_english=True)
@@ -134,7 +142,7 @@ class TranslationService:
     def to_user_language(self, text: str) -> str:
         """Convinience method to translate to user's language"""
         return self.translate(text=text, to_english=False)
-    
+
     async def to_user_language_async(self, text: str) -> str:
         """Async convinience method to translate to user's language"""
         return await self.translate(text=text, to_english=False)
@@ -142,7 +150,7 @@ class TranslationService:
     def translate_batch(self, texts: list[str], to_english: bool = False) -> list[str]:
         """Translate multiple texts"""
         return [self.translate(text, to_english) for text in texts]
-    
+
     async def translate_batch_async(
         self, texts: list[str], to_english: bool = False
     ) -> list[str]:
@@ -154,21 +162,21 @@ class TranslationService:
         """Get all static messages translated to the target language"""
         if self._message_cache:
             return self._message_cache
-        
+
         for key, message in MESSAGES.items():
             try:
                 self._message_cache[key] = self.to_user_language(message)
             except TranslationError:
                 self._message_cache[key] = message
                 logger.warning("Failed to translate message '%s', using English", key)
-        
+
         return self._message_cache
-    
+
     def get_message(self, key: str) -> str:
         """Get a specific translated message"""
         messages = self.get_messages()
         return messages.get(key, MESSAGES.get(key, ""))
-    
+
     def clear_cache(self) -> None:
         """Clear all caches"""
         self._message_cache.clear()
@@ -188,7 +196,7 @@ class TranslationServiceFactory:
             cls._instances[language] = TranslationService(language)
             logger.info("Created TranslationService for %s", language.name)
         return cls._instances[language]
-    
+
     @classmethod
     def clear_all(cls) -> None:
         """Clear all cached instances"""
@@ -201,15 +209,16 @@ def get_translation_service(language: Language) -> TranslationService:
     """Factory function to get translation service"""
     return TranslationServiceFactory.get_service(language)
 
+
 @lru_cache
 def detect_language(text: str) -> Optional[str]:
     """Detect the language of a text (cached)"""
     try:
-        from langdetect import detect
         return detect(text)
     except Exception as e:
         logger.warning("Language detection failed: %s", e)
         return None
+
 
 def is_supported_language(lang_code: str) -> bool:
     """Check if a language code is supported"""

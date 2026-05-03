@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 
 from src.core.mcp_client import GMailMCPClient
 from src.config.settings import get_settings
+from src.utils.consts import EMAIL_BODY, TIMEOUT
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -22,7 +23,7 @@ class MCPWorkflowManager:
         self.pending_reviews: Dict[str, Dict[str, Any]] = {}
         self.review_polling: bool = False
         self.client = GMailMCPClient()
-    
+
     async def initialise(self) -> None:
         """Initialise MCP connection."""
         try:
@@ -31,7 +32,7 @@ class MCPWorkflowManager:
         except Exception as e:
             logger.error("Failed to initialize MCP workflow manager: %s", e)
             raise
-    
+
     async def send_for_review(self, prescription_data: Dict[str, Any]) -> str:
         """Send prescription for review via Gmail MCP."""
         review_id = prescription_data.get("review_id")
@@ -41,7 +42,7 @@ class MCPWorkflowManager:
         try:
             body = self._build_review_email_body(prescription_data)
             result = await self.client.send_email(
-                to=settings.doc_email,
+                to_email=settings.doc_email,
                 subject=f"Prescription Review #{review_id}",
                 body=body,
             )
@@ -67,11 +68,9 @@ class MCPWorkflowManager:
         except Exception as e:
             logger.error("Failed to send prescription for review: %s", e)
             raise
-    
+
     async def await_review_result(self, review_id: str) -> Dict[str, Any]:
         """Wait for doctor response with timeout."""
-
-        from src.utils.consts import TIMEOUT
 
         start_time = datetime.now()
 
@@ -80,18 +79,62 @@ class MCPWorkflowManager:
 
             if review and review.get("status") == "COMPLETED":
                 return review.get("doctor_response", {})
-            
+
             await asyncio.sleep(self.POLL_INTERVAL_SECONDS)
-        
+
         return {
             "action": "TIMEOUT",
             "review_id": review_id,
-            "message": "Doctor dod not respond in time"
+            "message": "Doctor dod not respond in time",
         }
 
-    def _build_review_email_body(self, prescription_data: Dict[str, Any]) -> str:
-        from src.utils.consts import EMAIL_BODY
+    async def get_mcp_metrics(self) -> Dict[str, Any]:
+        """Return MCP workflow metrics for monitoring"""
 
+        pending_reviews = 0
+        completed_reviews = 0
+        sla_compliant = 0
+        total_sla_checked = 0
+
+        try:
+            reviews = getattr(self, "reviews", {})
+            for _, review in reviews.items():
+                status = review.get("status")
+                created_at = review.get("created_at")
+                completed_at = review.get("completed_at")
+
+                if status in ["PENDING", "SENT", "IN_REVIEW"]:
+                    pending_reviews += 1
+                elif status in ["APPROVED", "MODIFIED", "REJECTED"]:
+                    completed_reviews += 1
+
+                    # SLA calculations
+                    if created_at and completed_at:
+                        total_sla_checked += 1
+                        time_taken = (completed_at - created_at).total_seconds() / 60
+                        if time_taken <= review.get("sla_minutes", 60):
+                            sla_compliant += 1
+
+            sla_rate = (
+                (sla_compliant / total_sla_checked) * 100
+                if total_sla_checked > 0
+                else 100.0
+            )
+            return {
+                "total_pending_reviews": pending_reviews,
+                "total_completed_reviews": completed_reviews,
+                "sla_compliance_rate": round(sla_rate, 2),
+            }
+        except Exception as e:
+            return {
+                "total_pending_reviews": 0,
+                "total_completed_reviews": 0,
+                "sla_compliance_rate": 0.0,
+                "error": str(e),
+            }
+
+    def _build_review_email_body(self, prescription_data: Dict[str, Any]) -> str:
+        """Create email body"""
         return EMAIL_BODY.format(
             review_id=prescription_data.get("review_id"),
             age=prescription_data.get("patient_age"),
@@ -113,9 +156,7 @@ class MCPWorkflowManager:
             self.review_polling = False
             logger.info("Stopped MCP review polling loop")
 
-    async def _check_review(
-        self, review_id: str, review_data: Dict[str, Any]
-    ) -> None:
+    async def _check_review(self, review_id: str, review_data: Dict[str, Any]) -> None:
         """Check for doctor response for a specific review."""
         search_query = f"subject:#{review_id} from:{review_data['doctor_email']}"
 
@@ -137,13 +178,9 @@ class MCPWorkflowManager:
                     await self._process_response(review_id, email)
                     break
         except Exception as e:
-            logger.error(
-                "Error checking review response for %s: %s", review_id, e
-            )
+            logger.error("Error checking review response for %s: %s", review_id, e)
 
-    async def _process_response(
-        self, review_id: str, email: Dict[str, Any]
-    ) -> None:
+    async def _process_response(self, review_id: str, email: Dict[str, Any]) -> None:
         """Process doctor's response email."""
         try:
             email_content = email.get("body", "") or ""
@@ -169,45 +206,53 @@ class MCPWorkflowManager:
             del self.pending_reviews[review_id]
             await self._handle_doctor_action(review_id, action_data)
         except Exception as e:
-            logger.error(
-                "Error processing doctor response for %s: %s", review_id, e
-            )
-    
-    async def _handle_doctor_action(self, review_id: str, action_data: Dict[str, Any]) -> Dict[str, Any]:
+            logger.error("Error processing doctor response for %s: %s", review_id, e)
+
+    async def _handle_doctor_action(
+        self, review_id: str, action_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Handle doctor's action and return outcome"""
 
         action = action_data["action"]
-        
+
         # approved
         if action == "APPROVED":
             outcome = {
                 "action_taken": "prescription_finalized",
                 "message": "Prescription approved and finalized",
-                "next_steps": ["deliver_to_patient", "update_medical_records"]
+                "next_steps": ["deliver_to_patient", "update_medical_records"],
             }
-        # modified   
+        # modified
         elif action == "MODIFIED":
             outcome = {
                 "action_taken": "prescription_modified",
                 "modifications": action_data.get("modifications", ""),
                 "message": "Prescription modified per doctor's instructions",
-                "next_steps": ["regenerate_prescription", "deliver_to_patient"]
+                "next_steps": ["regenerate_prescription", "deliver_to_patient"],
             }
-        # rejected   
+        # rejected
         else:
             outcome = {
                 "action_taken": "prescription_rejected",
                 "reason": action_data.get("reason", ""),
                 "message": "Prescription rejected by doctor",
-                "next_steps": ["notify_patient", "schedule_follow_up", "restart_consultation"]
+                "next_steps": [
+                    "notify_patient",
+                    "schedule_follow_up",
+                    "restart_consultation",
+                ],
             }
-        
-        # Log the outcome for tracking
-        logger.info(f"Doctor action handled for {review_id}: {action} -> {outcome['action_taken']}")
 
-    def _parse_action(
-        self, email_content: str, review_id: str
-    ) -> Dict[str, Any]:
+        # Log the outcome for tracking
+        logger.info(
+            "Doctor action handled for %s: $s -> %s",
+            review_id,
+            action,
+            outcome["action_taken"],
+        )
+        return outcome
+
+    def _parse_action(self, email_content: str, review_id: str) -> Dict[str, Any]:
         """
         Parse doctor's action from email content.
 
@@ -227,7 +272,7 @@ class MCPWorkflowManager:
             result = handler(email_text, review_id)
             if result is not None:
                 return result
-        
+
         logger.warning(
             "No explicit action found in email for review %s; defaulting to REJECTED",
             review_id,
