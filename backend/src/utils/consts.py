@@ -71,7 +71,7 @@ class Language(Enum):
 
 class WorkflowStep(Enum):
     """Workflow step enumeration"""
-    
+
     WELCOME = "welcome"
     INITIAL_SYMPTOM = "initial_symptom"
     QUESTIONS_GENERATED = "questions_generated"
@@ -100,7 +100,7 @@ class ReviewStatus(Enum):
 
 class Platform:
     """Platform detection utility"""
-    
+
     MAC = "Darwin"
     WINDOWS = "Windows"
     LINUX = "Linux"
@@ -108,15 +108,15 @@ class Platform:
     @classmethod
     def current(cls) -> str:
         return platform.system()
-    
+
     @classmethod
     def is_mac(cls) -> bool:
         return cls.current() == cls.MAC
-    
+
     @classmethod
     def is_windows(cls) -> bool:
         return cls.current() == cls.WINDOWS
-    
+
     @classmethod
     def is_linux(cls) -> bool:
         return cls.current() == cls.LINUX
@@ -160,12 +160,12 @@ class DiagnosisSession:
     @property
     def conversation_summary(self) -> str:
         """Summarize the conversation for LLM input"""
-        
+
         lines = [f"Initial complaint: {self.initial_complaint}"]
         for turn in self.conversation:
             lines.append(f"Q: {turn.question}\nA: {turn.answer}")
         return "\n".join(lines)
-    
+
     @property
     def is_complete(self) -> bool:
         """Check if all questions have been answered"""
@@ -189,19 +189,21 @@ class DiagnosisSession:
             "status": self.status,
             "language": getattr(self, "language", "en"),
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict) -> "DiagnosisSession":
         """Create session from dictionary"""
 
         patient = PatientInfo(
+            name=data.get("name", "Unknown"),
+            email=data.get("email", "abc@example.com"),
             age=data.get("patient_age", 1),
-            gender=Gender.from_string(data.get("patient_gender", "other"))
+            gender=Gender.from_string(data.get("patient_gender", "other")),
         )
         session = cls(
             session_id=data.get("session_id", ""),
             patient=patient,
-            initial_complaint=data.get("initial_complaint", "")
+            initial_complaint=data.get("initial_complaint", ""),
         )
         session.questions = data.get("questions", [])
         session.conversation = []
@@ -220,7 +222,7 @@ class AgentPerformanceMetrics:
     total_executions: int = 0
     total_duration_ms: float = 0
     average_duration_ms: float = 0
-    min_duration_ms: float = float('inf')
+    min_duration_ms: float = float("inf")
     max_duration_ms: float = 0
     error_count: int = 0
     success_rate: float = 1.0
@@ -245,18 +247,22 @@ class AgentPerformanceMetrics:
             self.total_duration_ms += duration_ms
             self.min_duration_ms = min(self.min_duration_ms, duration_ms)
             self.max_duration_ms = max(self.max_duration_ms, duration_ms)
-            self.average_duration_ms = self.total_duration_ms / max(1, self.total_executions - self.error_count)
+            self.average_duration_ms = self.total_duration_ms / max(
+                1, self.total_executions - self.error_count
+            )
             self._update_durations(duration_ms)
             self._calc_percentile()
-        
-        self.success_rate = (self.total_executions - self.error_count) / max(1, self.total_executions)
-    
+
+        self.success_rate = (self.total_executions - self.error_count) / max(
+            1, self.total_executions
+        )
+
     def _update_durations(self, exec_time: float):
         """Update the recent durations for percentile calculation"""
         self.recent_durations.append(exec_time)
         if len(self.recent_durations) - self.max_recent_samples > 0:
             self.recent_durations.pop(0)
-    
+
     def _calc_percentile(self):
         """Calculate percentiles"""
         if self.recent_durations:
@@ -265,20 +271,24 @@ class AgentPerformanceMetrics:
             self.p50_ms = sorted_durations[int(n * 0.5)]
             self.p95_ms = sorted_durations[min(int(n * 0.95), n - 1)]
             self.p99_ms = sorted_durations[min(int(n * 0.99), n - 1)]
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert metrics to dictionary for serialization"""
         return {
             "agent_name": self.agent_name,
             "total_executions": self.total_executions,
             "average_duration_ms": round(self.average_duration_ms, 2),
-            "min_duration_ms": round(self.min_duration_ms, 2) if self.min_duration_ms != float('inf') else 0,
+            "min_duration_ms": (
+                round(self.min_duration_ms, 2)
+                if self.min_duration_ms != float("inf")
+                else 0
+            ),
             "max_duration_ms": round(self.max_duration_ms, 2),
             "error_count": self.error_count,
             "success_rate": round(self.success_rate, 4),
             "p50_ms": round(self.p50_ms, 2),
             "p95_ms": round(self.p95_ms, 2),
-            "p99_ms": round(self.p99_ms, 2)
+            "p99_ms": round(self.p99_ms, 2),
         }
 
 
@@ -336,6 +346,7 @@ class TextToSpeechService(ABC):
 
 class GmailSendInput(BaseModel):
     """Input for Gmail MCP send tool"""
+
     to_email: str = Field(..., description="Recipient email address")
     subject: str = Field(..., description="Email subject")
     body: str = Field(..., description="Email body content")
@@ -344,6 +355,7 @@ class GmailSendInput(BaseModel):
 
 class GmailReadInput(BaseModel):
     """Input for Gmail MCP read tool"""
+
     search_query: str = Field(..., description="Gmail search query")
     max_results: int = Field(default=10, description="Maximum number of results")
 
@@ -358,7 +370,8 @@ Patient's complaint: {input}
 Strictly generate only 3 specific, medically relevant follow-up questions.
 Format each question on a new line, numbered 1-3""".strip()
 
-MEDICATION_PROMPT = """Based on the following patient information and conversation, provide:
+MEDICATION_PROMPT = (
+    """Based on the following patient information and conversation, provide:
 1. A likely diagnosis (or differential diagnosis if uncertain)
 2. Recommended medications with dosage
 3. Lifestyle recommendations
@@ -373,6 +386,7 @@ Consultation Summary:
 
 Provide clear, actionable medical guidance. Include appropriate disclaimers.
 """.strip()
+)
 
 PRESCRIPTION_TEMPLATE = """
 Date: {date}
@@ -417,13 +431,13 @@ MESSAGES = {
 }
 
 FORMAT_MAP = {
-    '.wav': 'wav',
-    '.flac': 'flac',
-    '.webm': 'webm',
-    '.mp3': 'mp3',
-    '.m4a': 'mp4',
-    '.aiff': 'aiff',
-    '.aif': 'aiff'
+    ".wav": "wav",
+    ".flac": "flac",
+    ".webm": "webm",
+    ".mp3": "mp3",
+    ".m4a": "mp4",
+    ".aiff": "aiff",
+    ".aif": "aiff",
 }
 
 EMAIL_BODY = """

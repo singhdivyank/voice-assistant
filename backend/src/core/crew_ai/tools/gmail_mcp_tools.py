@@ -15,6 +15,8 @@ gmail_client = GMailMCPClient()
 
 
 class GMailMCPSendTool(BaseTool):
+    """Tool to send emails via Gmail MCP server"""
+
     name: str = "gmail_mcp_send"
     description: str = "Send emails via Gmail MCP server for review"
     args_schema: type[BaseModel] = GmailSendInput
@@ -25,36 +27,39 @@ class GMailMCPSendTool(BaseTool):
         try:
             if not gmail_client.connected:
                 asyncio.run(gmail_client.connect())
-            
-            result = asyncio.run(gmail_client.send_email(
-                to_email=to,
-                subject=subject,
-                body=body
-            ))
 
-            is_success = result.get('success', False)
+            result = asyncio.run(
+                gmail_client.send_email(to_email=to, subject=subject, body=body)
+            )
+
+            is_success = result.get("success", False)
             if not is_success:
-                return json.dumps({
-                    "status": "EMAIL_FAILED",
-                    "error": result.get('error')
-                })
-            
-            return json.dumps({
-                "status": "EMAIL_SENT",
-                "review_id": review_id,
-                "message_id": result.get('message_id'),
-                "timestamp": result.get('timestamp'),
-                "recipient": to
-            })
+                return json.dumps(
+                    {"status": "EMAIL_FAILED", "error": result.get("error")}
+                )
+
+            return json.dumps(
+                {
+                    "status": "EMAIL_SENT",
+                    "review_id": review_id,
+                    "message_id": result.get("message_id"),
+                    "timestamp": result.get("timestamp"),
+                    "recipient": to,
+                }
+            )
         except Exception as e:
-            logger.error(f"GMail MCP send tool failed: {e}")
-            return json.dumps({
-                "status": "ERROR",
-                "message": f"Gmail MCP integration failed: {str(e)}"
-            })
+            logger.error("GMail MCP send tool failed:%s", str(e))
+            return json.dumps(
+                {
+                    "status": "ERROR",
+                    "message": f"Gmail MCP integration failed: {str(e)}",
+                }
+            )
 
 
 class GMailMCPReadTool(BaseTool):
+    """Tool to read emails via Gmail MCP server"""
+
     name: str = "gmail_mcp_read"
     description: str = "Read emails via Gmail MCP server to check for doctor responses"
     args_schema: type[BaseModel] = GmailReadInput
@@ -65,16 +70,13 @@ class GMailMCPReadTool(BaseTool):
         try:
             if not gmail_client.connected:
                 asyncio.run(gmail_client.connect())
-            
+
             emails = asyncio.run(gmail_client.read_emails(search_query, max_results))
-            return json.dumps({
-                "status": "EMAIL_READ",
-                "count": len(emails),
-                "emails": emails
-            })
+            return json.dumps(
+                {"status": "EMAIL_READ", "count": len(emails), "emails": emails}
+            )
         except Exception as e:
-            logger.error(f"Gmail MCP read tool failed: {e}")
-            return json.dumps({
-                "status": "ERROR",
-                "message": f"Gmail MCP read failed: {str(e)}"
-            })
+            logger.error("Gmail MCP read tool failed: %s", str(e))
+            return json.dumps(
+                {"status": "ERROR", "message": f"Gmail MCP read failed: {str(e)}"}
+            )

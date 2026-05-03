@@ -1,8 +1,14 @@
+"""Health check module for monitoring latency"""
+
 import logging
 
+import psutil
 from fastapi import APIRouter
 
 from src.config.settings import get_settings
+from src.core.crew_ai.medical_crew import medical_crew
+from src.core.crew_ai.constants import AGENT_NAMES
+from src.core.llm_manager import llm_manager
 from src.monitoring.dashboard import monitoring_dashboard
 from .helpers import _base_status, _component_ok, _component_fail
 
@@ -10,18 +16,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 settings = get_settings()
 
+
 @router.get("/ready")
 async def readiness_check():
     """readiness check for Kubernetes / load balancers"""
-
-    from src.core.llm_manager import llm_manager
-    from src.core.crew_ai.medical_crew import medical_crew
 
     status = {
         "status": "ready",
         **_base_status("docjarvis-crewai"),
         "environment": settings.environment.value,
-        "components": {}
+        "components": {},
     }
     all_ready = True
 
@@ -39,16 +43,18 @@ async def readiness_check():
     all_ready &= ok
 
     try:
-        initialized = hasattr(medical_crew, '_initialised') and medical_crew._initialised
+        initialized = (
+            hasattr(medical_crew, "_initialised") and medical_crew._initialised
+        )
         if not initialized:
             await medical_crew.initialise()
-        
+
         comp, ok = _component_ok(
             "crewai_medical_service",
             crew_initialized=medical_crew._initialised,
             agents_available=len(medical_crew.agents),
-            session_manager_ready=hasattr(medical_crew, 'session_manager'),
-            mcp_manager_ready=hasattr(medical_crew, 'mcp_manager'),
+            session_manager_ready=hasattr(medical_crew, "session_manager"),
+            mcp_manager_ready=hasattr(medical_crew, "mcp_manager"),
         )
     except Exception as e:
         logger.error("Multi-Agent Service not ready: %s", e)
@@ -62,22 +68,34 @@ async def readiness_check():
             "cache_system",
             total_entries=cache_stats.get("total_entries", 0),
             hit_rate=cache_stats.get("hit_rate", 0.0),
-            crewai_agents_cached=len([
-                agent for agent in cache_stats.get("agent_cache_status", {}).keys()
-                if agent in ["speech_processor", "translator", "interviewer", "diagnostician", "pharmacist", "prescription_specialist"]
-            ])
+            crewai_agents_cached=len(
+                [
+                    agent
+                    for agent in cache_stats.get("agent_cache_status", {}).keys()
+                    if agent in AGENT_NAMES
+                ]
+            ),
         )
     except Exception as e:
         logger.error("Cache System not ready: %s", e)
         comp, ok = _component_fail("cache_system", e)
-    
+
     status["components"].update(comp)
     all_ready &= ok
 
     try:
         load_stats = monitoring_dashboard.load_balancer.get_load_stats()
-        crewai_agents = ["speech_processor", "translator", "interviewer", "diagnostician", "pharmacist", "prescription_specialist"]
-        crewai_configured = sum(1 for agent in load_stats.keys() if agent in crewai_agents)
+        crewai_agents = [
+            "speech_processor",
+            "translator",
+            "interviewer",
+            "diagnostician",
+            "pharmacist",
+            "prescription_specialist",
+        ]
+        crewai_configured = sum(
+            1 for agent in load_stats.keys() if agent in crewai_agents
+        )
 
         comp, ok = _component_ok(
             "load_balancer",
@@ -90,7 +108,7 @@ async def readiness_check():
     except Exception as e:
         logger.error("Load Balancer not ready: %s", e)
         comp, ok = _component_fail("load_balancer", e)
-    
+
     status["components"].update(comp)
     all_ready &= ok
 
@@ -100,17 +118,20 @@ async def readiness_check():
             "monitoring_system",
             dashboard_data_available=bool(monitoring_data),
             performance_data_available=bool(monitoring_data.get("performance")),
-            crewai_transition_status=monitoring_data.get("performance", {}).get("crewai_transition_status", {}),
+            crewai_transition_status=monitoring_data.get("performance", {}).get(
+                "crewai_transition_status", {}
+            ),
         )
     except Exception as e:
         logger.error("Monitoring System not ready: %s", e)
         comp, _ = _component_fail("monitoring_system", e)
-    
+
     status["components"].update(comp)
     if not all_ready:
         status["status"] = "not_ready"
 
     return status
+
 
 @router.get("/deep")
 async def deep_health_check():
@@ -124,22 +145,20 @@ async def deep_health_check():
     overall_ok = True
 
     try:
-        from src.core.crew_ai.medical_crew import medical_crew
-
         logger.info("Running deep health check - workflow integration test")
 
         agent_tests = {}
         try:
             if not medical_crew._initialised:
                 await medical_crew.initialise()
-            
+
             for agent_name, agent in medical_crew.agents.items():
                 try:
                     # check if agent is properly initialized
                     agent_tests[agent_name] = {
-                        "status": "healthy", 
+                        "status": "healthy",
                         "initialized": agent is not None,
-                        "role": getattr(agent, 'role', 'unknown')
+                        "role": getattr(agent, "role", "unknown"),
                     }
                 except Exception as e:
                     agent_tests[agent_name] = {"status": "unhealthy", "error": str(e)}
@@ -151,7 +170,11 @@ async def deep_health_check():
         health["deep_checks"]["workflow_integration"] = {
             "status": "healthy" if overall_ok else "unhealthy",
             "agent_tests": agent_tests,
-            "crew_initialized": medical_crew._initialised if hasattr(medical_crew, '_initialised') else False,
+            "crew_initialized": (
+                medical_crew._initialised
+                if hasattr(medical_crew, "_initialised")
+                else False
+            ),
         }
     except Exception as e:
         logger.error("Deep health workflow test failed: %s", e)
@@ -183,8 +206,6 @@ async def deep_health_check():
         overall_ok = False
 
     try:
-        import psutil
-
         cpu = psutil.cpu_percent(interval=1)
         mem = psutil.virtual_memory().percent
         disk = psutil.disk_usage("/").percent
@@ -218,20 +239,20 @@ async def deep_health_check():
             "status": "unhealthy",
             "error": str(e),
         }
-    
+
     try:
-        if hasattr(medical_crew, 'mcp_manager'):
+        if hasattr(medical_crew, "mcp_manager"):
             mcp_metrics = await medical_crew.mcp_manager.get_mcp_metrics()
             health["deep_checks"]["mcp_integration"] = {
                 "status": "healthy",
                 "pending_reviews": mcp_metrics.get("total_pending_reviews", 0),
                 "completed_reviews": mcp_metrics.get("total_completed_reviews", 0),
-                "sla_compliance_rate": mcp_metrics.get("sla_compliance_rate", 100.0)
+                "sla_compliance_rate": mcp_metrics.get("sla_compliance_rate", 100.0),
             }
         else:
             health["deep_checks"]["mcp_integration"] = {
                 "status": "not_configured",
-                "message": "MCP manager not available"
+                "message": "MCP manager not available",
             }
     except Exception as e:
         logger.error("Deep health MCP test failed: %s", e)
@@ -243,10 +264,11 @@ async def deep_health_check():
     health["status"] = "healthy" if overall_ok else "unhealthy"
     return health
 
+
 @router.get("/startup")
 async def startup_check():
     """startup health check after initialization"""
-    
+
     status = {
         "status": "initialized",
         **_base_status("docjarvis-multi-agent"),
@@ -296,22 +318,25 @@ async def startup_check():
             "error": str(e),
         }
         status["status"] = "failed"
-    
+
     try:
-        from src.core.crew_ai.medical_crew import medical_crew
-        
         crew_status = {
-            "status": "initialized" if hasattr(medical_crew, '_initialised') and medical_crew._initialised else "pending",
-            "agents_loaded": len(medical_crew.agents) if hasattr(medical_crew, 'agents') else 0,
-            "session_manager": hasattr(medical_crew, 'session_manager'),
-            "mcp_manager": hasattr(medical_crew, 'mcp_manager'),
+            "status": (
+                "initialized"
+                if hasattr(medical_crew, "_initialised") and medical_crew._initialised
+                else "pending"
+            ),
+            "agents_loaded": (
+                len(medical_crew.agents) if hasattr(medical_crew, "agents") else 0
+            ),
+            "session_manager": hasattr(medical_crew, "session_manager"),
+            "mcp_manager": hasattr(medical_crew, "mcp_manager"),
         }
-        
+
         status["startup_checks"]["crewai_system"] = crew_status
-        
+
         if crew_status["status"] == "pending":
             status["status"] = "initializing"
-            
     except Exception as e:
         status["startup_checks"]["crewai_system"] = {
             "status": "failed",

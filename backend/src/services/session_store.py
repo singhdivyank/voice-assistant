@@ -5,6 +5,8 @@ import logging
 from datetime import datetime
 from typing import Optional
 
+import redis.asyncio as redis
+
 from src.core.diagnosis import DiagnosisSession
 from src.config.settings import get_settings
 from src.utils.consts import SessionStore
@@ -19,23 +21,23 @@ class InMemorySessionStore(SessionStore):
     def __init__(self):
         self._sessions: dict[str, dict] = {}
         self._timestamps: dict[str, datetime] = {}
-        
+
     async def save(self, session: DiagnosisSession) -> None:
         """Save session to memory"""
-        
+
         if session.session_id not in self._timestamps:
             self._timestamps[session.session_id] = datetime.now()
         self._sessions[session.session_id] = session.to_dict()
         logger.debug("Saved session %s to memory", session.session_id)
-    
+
     async def get(self, session_id: str) -> Optional[DiagnosisSession]:
         """Get session from memory"""
-        
+
         data = self._sessions.get(session_id)
         if not data:
             return None
         return DiagnosisSession.from_dict(data)
-    
+
     async def delete(self, session_id: str) -> bool:
         """Delete session from memory"""
 
@@ -45,7 +47,7 @@ class InMemorySessionStore(SessionStore):
                 del self._timestamps[session_id]
             return True
         return False
-    
+
     def get_created_at(self, session_id: str) -> datetime:
         """Get session creation time"""
 
@@ -59,23 +61,22 @@ class RedisSessionStore(SessionStore):
         self.redis_url = redis_url
         self.ttl = ttl
         self._client = None
-    
+
     async def _get_client(self):
         """Get Redis client"""
 
         if self._client is None:
-            import redis.asyncio as redis
             self._client = redis.from_url(self.redis_url)
         return self._client
-    
+
     def _session_key(self, session_id: str) -> str:
         """Generate Redis key for session"""
         return f"docjarvis:session:{session_id}"
-    
+
     def _timestamp_key(self, session_id: str) -> str:
         """Generate Redis key for session timestamp"""
         return f"docjarvis:session:{session_id}:created"
-    
+
     async def save(self, session: DiagnosisSession) -> None:
         """Save session to Redis"""
 
@@ -86,10 +87,10 @@ class RedisSessionStore(SessionStore):
         exists = await client.exists(ts_key)
         if not exists:
             await client.set(ts_key, datetime.now().isoformat(), ex=self.ttl)
-        
+
         await client.set(key, json.dumps(session.to_dict()), ex=self.ttl)
         logger.debug("Saved session %s to Redis", session.session_id)
-    
+
     async def get(self, session_id: str) -> Optional[DiagnosisSession]:
         """Get session from Redis"""
 
@@ -100,7 +101,7 @@ class RedisSessionStore(SessionStore):
         if not data:
             return None
         return DiagnosisSession.from_dict(json.loads(data))
-    
+
     async def delete(self, session_id: str) -> bool:
         """Delete session from Redis"""
 
@@ -109,11 +110,11 @@ class RedisSessionStore(SessionStore):
         ts_key = self._timestamp_key(session_id)
         result = await client.delete(key, ts_key)
         return result > 0
-    
+
     def get_created_at(self) -> datetime:
         """Get session creation time"""
         return datetime.now()
-    
+
     async def get_created_at_async(self, session_id: str) -> datetime:
         """Get session creation time (async version)"""
 
@@ -123,22 +124,22 @@ class RedisSessionStore(SessionStore):
 
         if not data:
             return datetime.now()
-        return datetime.fromisoformat(data.decode('utf-8'))
+        return datetime.fromisoformat(data.decode("utf-8"))
 
 
-_store: Optional[SessionStore] = None
+STORE: Optional[SessionStore] = None
 
 
 def get_session_store() -> SessionStore:
     """Get the session store instance"""
 
-    global _store
+    global STORE
 
-    if _store is None:
-        if settings.environment.value == 'prod':
-            _store = RedisSessionStore(settings.redis_url, settings.session_ttl)
+    if STORE is None:
+        if settings.environment.value == "prod":
+            STORE = RedisSessionStore(settings.redis_url, settings.session_ttl)
         else:
-            _store = InMemorySessionStore()
-        logger.info("Initialized %s session store", _store.__class__.__name__)
-    
-    return _store
+            STORE = InMemorySessionStore()
+        logger.info("Initialized %s session store", STORE.__class__.__name__)
+
+    return STORE

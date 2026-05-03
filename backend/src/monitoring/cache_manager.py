@@ -1,3 +1,5 @@
+"""Monitoring cache ttl"""
+
 import hashlib
 import json
 import logging
@@ -26,16 +28,16 @@ class CacheManager:
             "diagnosis": {"ttl": 1800, "enabled": False},
             "prescription": {"ttl": 900, "enabled": False},
             "tts": {"ttl": 3600, "enabled": True},
-            "stt": {"ttl": 1800, "enabled": True}
+            "stt": {"ttl": 1800, "enabled": True},
         }
-    
+
     def get(self, agent_name: str, input_data: Any) -> Optional[Any]:
         """Get cached result for agent execution"""
 
         config = self.agent_cache_config.get(agent_name, {})
         if not config.get("enabled", False):
             return None
-        
+
         cache_key = self._generate_cache_key(agent_name, input_data)
         if cache_key in self._cache:
             value, timestamp, access_control = self._cache[cache_key]
@@ -46,55 +48,57 @@ class CacheManager:
                 self.hits += 1
                 telemetry.increment_counter(
                     "cache_operations",
-                    attributes={"agent": agent_name, "operation": "hit"}
+                    attributes={"agent": agent_name, "operation": "hit"},
                 )
 
                 logger.debug("Cache hit for agent %s", agent_name)
                 return value
-            else:
-                del self._cache[cache_key]
-                if cache_key in self._access_order:
-                    self._access_order.remove(cache_key)
-        
+
+            del self._cache[cache_key]
+            if cache_key in self._access_order:
+                self._access_order.remove(cache_key)
+
         self.misses += 1
         telemetry.increment_counter(
-            "cache_operations",
-            attributes={"agent": agent_name, "operation": "miss"}
+            "cache_operations", attributes={"agent": agent_name, "operation": "miss"}
         )
 
         return None
-    
+
     def set(self, agent_name: str, input_data: Any, result: Any) -> None:
         """Cache result for agent execution"""
 
         config = self.agent_cache_config.get(agent_name, {})
         if not config.get("enabled", False):
-            return 
-        
+            return
+
         cache_key = self._generate_cache_key(agent_name, input_data)
 
         if len(self._cache) >= self.max_size:
             self._evict_lru()
-        
+
         self._cache[cache_key] = (result, datetime.now(), 1)
         self._update_access_order(cache_key)
         telemetry.increment_counter(
-            "cache_operations",
-            attributes={"agent": agent_name, "operation": "set"}
+            "cache_operations", attributes={"agent": agent_name, "operation": "set"}
         )
         logger.debug("Cached result for agent %s", agent_name)
-    
+
     def clear_agent_cache(self, agent_name: str) -> None:
         """Clear all cache entries for a specific agent"""
 
-        keys_to_remove = [key for key in self._cache.keys() if key.startswith(f"{agent_name}:")]
+        keys_to_remove = [
+            key for key, _ in self._cache.items() if key.startswith(f"{agent_name}:")
+        ]
         for key in keys_to_remove:
             del self._cache[key]
             if key in self._access_order:
                 self._access_order.remove(key)
-        
-        logger.info("Cleared %d cache entries for agent %s", len(keys_to_remove), agent_name)
-    
+
+        logger.info(
+            "Cleared %d cache entries for agent %s", len(keys_to_remove), agent_name
+        )
+
     def get_stats(self) -> Dict[str, Any]:
         """Get cache performance statistics"""
 
@@ -110,34 +114,39 @@ class CacheManager:
             "memory_usage": {
                 "cache_size": len(self._cache),
                 "max_size": self.max_size,
-                "utilization": len(self._cache) / self.max_size
-            }
+                "utilization": len(self._cache) / self.max_size,
+            },
         }
-    
+
     def _generate_cache_key(self, agent_name: str, input_data: Any) -> str:
         """Generate cache key from agent name and input"""
 
-        input_str = json.dumps(input_data, sort_keys=True) if isinstance(input_data, dict) else str(input_data)
+        input_str = (
+            json.dumps(input_data, sort_keys=True)
+            if isinstance(input_data, dict)
+            else str(input_data)
+        )
         hash_obj = hashlib.md5(f"{agent_name}:{input_str}".encode())
         return f"{agent_name}:{hash_obj.hexdigest()[:16]}"
-    
+
     def _update_access_order(self, cache_key: str) -> None:
         """Update LRU access order"""
 
         if cache_key in self._access_order:
             self._access_order.remove(cache_key)
         self._access_order.append(cache_key)
-    
+
     def _evict_lru(self) -> None:
         """Evict least recently used cache entry"""
 
         if not self._access_order:
-            return 
-        
+            return
+
         lru_key = self._access_order.pop(0)
         if lru_key in self._cache:
             del self._cache[lru_key]
             self.evictions += 1
             telemetry.increment_counter("cache_evictions")
+
 
 cache_manager = CacheManager()

@@ -10,10 +10,17 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from fastapi.responses import StreamingResponse
 
-from .helpers import _translate_questions, _translate_text_to_user, _translate_text_to_english
+from .helpers import (
+    _translate_questions,
+    _translate_text_to_user,
+    _translate_text_to_english,
+)
 from src.api.schemas import (
-    SessionCreate, SessionResponse, SessionState,
-    SubmitAnswer, MedicationResponse
+    SessionCreate,
+    SessionResponse,
+    SessionState,
+    SubmitAnswer,
+    MedicationResponse,
 )
 from src.core.diagnosis import DiagnosisService, PatientInfo
 from src.config.settings import get_settings
@@ -33,8 +40,7 @@ file_handler = FileHandler()
 
 @router.post("/", response_model=SessionResponse)
 async def create_session(
-    request: SessionCreate,
-    store: SessionStore = Depends(get_session_store)
+    request: SessionCreate, store: SessionStore = Depends(get_session_store)
 ):
     """Create new consultation session. Questions returned in user's language."""
 
@@ -42,12 +48,14 @@ async def create_session(
 
     with telemetry.span("api_create_session", {"session_id": session_id}):
         patient = PatientInfo(
+            name=request.name,
+            email=request.email,
             age=request.patient_age,
-            gender=Gender.from_string(request.patient_gender)
+            gender=Gender.from_string(request.patient_gender),
         )
-        
+
         logger.info("Initial complaint: %s", request.initial_complaint)
-        
+
         if request.initial_complaint:
             session = diagnosis_service.create_session(
                 session_id=session_id,
@@ -56,17 +64,14 @@ async def create_session(
             )
         else:
             session = DiagnosisSession(
-                session_id=session_id,
-                patient=patient,
-                initial_complaint= ""
+                session_id=session_id, patient=patient, initial_complaint=""
             )
-        
+
         session.language = request.language or "en"
         await store.save(session)
 
         questions_for_client = _translate_questions(
-            questions=session.questions, 
-            user_lang=Language.from_code(session.language)
+            questions=session.questions, usr_lang=Language.from_code(session.language)
         )
         logger.info("Created session %s, language=%s", session_id, session.language)
 
@@ -78,25 +83,26 @@ async def create_session(
             patient_gender=session.patient.gender.value,
             language=request.language,
             initial_complaint=session.initial_complaint,
-            questions=questions_for_client
+            questions=questions_for_client,
         )
+
 
 @router.post("/{session_id}/transcribe")
 async def transcribe_and_respond(
     session_id: str,
     audio_file: UploadFile = File(...),
     question_index: int = 0,
-    store: SessionStore = Depends(get_session_store)
+    store: SessionStore = Depends(get_session_store),
 ):
     """STT endpoint to transcribe audio and generate response."""
 
     session = await store.get(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     if session.status == "completed":
         raise HTTPException(status_code=400, detail="Session already completed")
-    
+
     lang = getattr(session, "language", "en")
     temp_audio_path = None
 
@@ -106,40 +112,50 @@ async def transcribe_and_respond(
                 content = await audio_file.read()
                 temp_file.write(content)
                 temp_audio_path = Path(temp_file.name)
-            
+
             speech_service = SpeechService(language=Language.from_code(lang))
             transcribed_text = speech_service.listen_from_file(temp_audio_path)
             logger.info("Transcribed audio: %s", transcribed_text[:100])
-            answer_for_llm = _translate_text_to_english(transcribed_text, Language.from_code(lang))
+            answer_for_llm = _translate_text_to_english(
+                transcribed_text, Language.from_code(lang)
+            )
 
             if not session.questions and not session.initial_complaint:
                 session.initial_complaint = answer_for_llm
-                session.questions = diagnosis_service.engine.generate_questions(answer_for_llm)
+                session.questions = diagnosis_service.engine.generate_questions(
+                    answer_for_llm
+                )
                 session.current_question_index = 0
-                
+
                 next_question_en = session.questions[0] if session.questions else None
-                next_question = _translate_text_to_user(next_question_en, lang) if next_question_en else None
-                
+                next_question = (
+                    _translate_text_to_user(next_question_en, lang)
+                    if next_question_en
+                    else None
+                )
+
                 await store.save(session)
 
                 response_audio_b64 = None
                 if next_question:
-                    response_audio_b64 = await speech_service.synthesize_base64(next_question)
-                
+                    response_audio_b64 = await speech_service.synthesize_base64(
+                        next_question
+                    )
+
                 return {
                     "transcribed_text": transcribed_text,
                     "next_question": next_question,
                     "response_audio": response_audio_b64,
                     "is_complete": False,
                     "should_generate_recommendations": False,
-                    "current_index": 0
+                    "current_index": 0,
                 }
-            
+
             if question_index < len(session.questions):
                 diagnosis_service.add_response(
                     session=session,
                     question_index=question_index,
-                    answer=answer_for_llm
+                    answer=answer_for_llm,
                 )
 
                 if session.current_question_index >= len(session.questions):
@@ -151,7 +167,7 @@ async def transcribe_and_respond(
                         "response_audio": None,
                         "is_complete": True,
                         "should_generate_recommendations": True,
-                        "current_index": session.current_question_index
+                        "current_index": session.current_question_index,
                     }
                 else:
                     next_question_en = session.questions[session.current_question_index]
@@ -159,15 +175,17 @@ async def transcribe_and_respond(
 
                     await store.save(session=session)
 
-                    response_audio_b64 = await speech_service.synthesize_base64(next_question)
-                
+                    response_audio_b64 = await speech_service.synthesize_base64(
+                        next_question
+                    )
+
                     return {
                         "transcribed_text": transcribed_text,
                         "next_question": next_question,
                         "response_audio": response_audio_b64,
                         "is_complete": False,
                         "should_generate_recommendations": False,
-                        "current_index": session.current_question_index
+                        "current_index": session.current_question_index,
                     }
             else:
                 raise HTTPException(status_code=400, detail="Invalid question index")
@@ -179,26 +197,26 @@ async def transcribe_and_respond(
         if temp_audio_path and temp_audio_path.exists():
             file_handler.safe_delete(temp_audio_path)
 
+
 @router.post("/{session_id}/speak-recommendations")
 async def speak_recommendations(
-    session_id: str,
-    store: SessionStore = Depends(get_session_store)
+    session_id: str, store: SessionStore = Depends(get_session_store)
 ):
     """Generates TTS audio for final recommendations"""
 
     session = await store.get(session_id)
     if not session or not session.medication:
         raise HTTPException(status_code=404, detail="No recommendations found")
-    
+
     lang = getattr(session, "language", "en")
     speech_service = SpeechService(language=Language.from_code(lang))
     audio_base64 = await speech_service.synthesize_base64(session.medication)
     return {"audio": audio_base64}
 
+
 @router.get("/{session_id}", response_model=SessionState)
 async def get_session(
-    session_id: str,
-    store: SessionStore = Depends(get_session_store)
+    session_id: str, store: SessionStore = Depends(get_session_store)
 ):
     """Get session state. Questions and conversation returned in user's language."""
 
@@ -208,10 +226,9 @@ async def get_session(
 
     lang_code = getattr(session, "language", "en")
     user_lang = Language.from_code(lang_code)
-    
+
     questions_for_client = _translate_questions(
-        questions=session.questions, 
-        user_lang=user_lang
+        questions=session.questions, usr_lang=user_lang
     )
     conversation_for_client = [
         {
@@ -220,11 +237,16 @@ async def get_session(
         }
         for c in session.conversation
     ]
-    medication_for_client = _translate_text_to_user(session.medication or "", lang_code) or session.medication
+    medication_for_client = (
+        _translate_text_to_user(session.medication or "", lang_code)
+        or session.medication
+    )
 
     prescription_path = None
     if session.status == "completed":
-        prescription_file_path = settings.prescription_dir / f"prescription_{session_id}.txt"
+        prescription_file_path = (
+            settings.prescription_dir / f"prescription_{session_id}.txt"
+        )
         if prescription_file_path.exists():
             prescription_path = str(prescription_file_path)
 
@@ -239,14 +261,15 @@ async def get_session(
         conversation=conversation_for_client,
         current_question_index=session.current_question_index,
         medication=medication_for_client,
-        prescription_path=prescription_path
+        prescription_path=prescription_path,
     )
+
 
 @router.post("/{session_id}/answer")
 async def submit_answer(
     session_id: str,
     request: SubmitAnswer,
-    store: SessionStore = Depends(get_session_store)
+    store: SessionStore = Depends(get_session_store),
 ):
     """Submit an answer. User's answer is translated to English for the LLM; next question returned in user's language."""
 
@@ -265,7 +288,7 @@ async def submit_answer(
         diagnosis_service.add_response(
             session=session,
             question_index=request.question_index,
-            answer=answer_for_llm
+            answer=answer_for_llm,
         )
 
         await store.save(session)
@@ -279,13 +302,13 @@ async def submit_answer(
             "status": "accepted",
             "current_index": session.current_question_index,
             "is_complete": session.is_complete,
-            "next_question": next_question
+            "next_question": next_question,
         }
+
 
 @router.post("/{session_id}/complete", response_model=MedicationResponse)
 async def complete_session(
-    session_id: str,
-    store: SessionStore = Depends(get_session_store)
+    session_id: str, store: SessionStore = Depends(get_session_store)
 ):
     """Complete session and get medication in user's language; medication_english when language != en."""
 
@@ -301,7 +324,7 @@ async def complete_session(
         return MedicationResponse(
             session_id=session_id,
             medication=med_user,
-            medication_english=med_en if lang != "en" else None
+            medication_english=med_en if lang != "en" else None,
         )
 
     with telemetry.span("api_complete_session", {"session_id": session_id}):
@@ -312,13 +335,13 @@ async def complete_session(
         return MedicationResponse(
             session_id=session_id,
             medication=medication_user,
-            medication_english=medication_en if lang != "en" else None
+            medication_english=medication_en if lang != "en" else None,
         )
+
 
 @router.post("/{session_id}/complete/stream")
 async def complete_session_stream(
-    session_id: str,
-    store: SessionStore = Depends(get_session_store)
+    session_id: str, store: SessionStore = Depends(get_session_store)
 ):
     """Complete session with streaming medication in user's language; then medication_english if lang != en."""
 
@@ -346,16 +369,13 @@ async def complete_session_stream(
     return StreamingResponse(
         generate(),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive"
-        }
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
+
 
 @router.delete("/{session_id}")
 async def delete_session(
-    session_id: str,
-    store: SessionStore = Depends(get_session_store)
+    session_id: str, store: SessionStore = Depends(get_session_store)
 ):
     """Delete a session"""
 

@@ -7,6 +7,7 @@ import re
 import uuid
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from crewai_tools import BaseTool
 
@@ -23,7 +24,7 @@ class SpeechToTextTool(BaseTool):
         """Transcribe audio file to text"""
 
         try:
-            
+
             from src.services.speech import SpeechRecognizer
             from src.utils.consts import Language
 
@@ -39,11 +40,13 @@ class TextToSpeechTool(BaseTool):
     name: str = "generate_audio"
     description: str = "Converting text to speech audio"
 
-    def _run(self, text: str, language_code: str = "en", filename: str = None) -> str:
+    def _run(
+        self, text: str, language_code: str = "en", filename: Optional[str] = None
+    ) -> str:
         """Generate audio from text"""
 
         try:
-            
+
             from src.services.speech import TextToSpeech
             from src.utils.consts import Language
 
@@ -54,10 +57,10 @@ class TextToSpeechTool(BaseTool):
             if not filename:
                 file_id = uuid.uuid4().hex[:8]
                 filename = f"audio_{file_id}.wav"
-            
+
             audio_path = settings.audio_dir / filename
             audio_path.write_bytes(audio_bytes)
-            audio_b64 = base64.b64encode(audio_bytes).decode('utf-8')
+            audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
             return f"Audio saved to {audio_path}\nBase64: {audio_b64}"
         except Exception as e:
             return f"Audio generation failed: {str(e)}"
@@ -71,20 +74,20 @@ class TranslationTool(BaseTool):
         """Translate text"""
 
         try:
-            
+
             from src.services.translation import TranslationService
             from src.utils.consts import Language
 
-            source_lang = Language.from_code(source_lang)
-            translator = TranslationService(source_lang)
+            given_lang = Language.from_code(code=source_lang)
+            translator = TranslationService(given_lang)
 
-            if target_lang.lower() in ['en', 'english']:
+            if target_lang.lower() in ["en", "english"]:
                 return translator.to_english(text)
-            
+
             return translator.to_user_language(text)
         except Exception as e:
             return f"Translation failed: {str(e)}"
-    
+
 
 class QuestionGenerationTool(BaseTool):
     name: str = "generate_medical_questions"
@@ -96,18 +99,18 @@ class QuestionGenerationTool(BaseTool):
         questions = []
 
         try:
-            
+
             from src.core.llm_manager import llm_manager
             from src.utils.consts import DIAGNOSIS_PROMPT
 
             prompt = DIAGNOSIS_PROMPT.format(input=complaint)
             response = asyncio.run(llm_manager.call_llm(prompt, {"agent": "qa"}))
 
-            for line in response.split("\n"):                
+            for line in response.split("\n"):
                 cleaned_text = re.sub(r"^\d+[\.\)]\s*", "", line.strip())
                 if cleaned_text and len(cleaned_text) > 10:
                     questions.append(cleaned_text)
-            
+
             return json.dumps(questions[:3])
         except Exception as e:
             return f"Question generation failed: {str(e)}"
@@ -121,16 +124,16 @@ class MedicationTool(BaseTool):
         """Generate medication recommendations"""
 
         try:
-            
+
             from src.core.llm_manager import llm_manager
             from src.utils.consts import MEDICATION_PROMPT
 
             prompt = MEDICATION_PROMPT.format(
-                age=patient_age,
-                gender=patient_gender,
-                conversation=diagnosis
+                age=patient_age, gender=patient_gender, conversation=diagnosis
             )
-            response = asyncio.run(llm_manager.call_llm(prompt, {"agent": "medication"}))
+            response = asyncio.run(
+                llm_manager.call_llm(prompt, {"agent": "medication"})
+            )
             return response
         except Exception as e:
             return f"Medication recommendation failed: {str(e)}"
@@ -141,13 +144,13 @@ class PrescriptionTool(BaseTool):
     description: str = "Generate formatted prescription document"
 
     def _run(
-        self, 
-        session_id: str, 
-        patient_age: int, 
-        patient_gender: str, 
-        complaint: str, 
+        self,
+        session_id: str,
+        patient_age: int,
+        patient_gender: str,
+        complaint: str,
         conversation: str,
-        medication: str
+        medication: str,
     ) -> str:
         """Generate prescription document"""
 
@@ -158,7 +161,9 @@ class PrescriptionTool(BaseTool):
 
             file_handler = FileHandler()
             # TODO- instead of session id use patient name
-            prescription_path = settings.prescription_dir / f"prescription_{session_id}.txt"
+            prescription_path = (
+                settings.prescription_dir / f"prescription_{session_id}.txt"
+            )
             now = datetime.now()
 
             content = PRESCRIPTION_TEMPLATE.format(
@@ -168,7 +173,7 @@ class PrescriptionTool(BaseTool):
                 gender=patient_gender,
                 initial_complaint=complaint,
                 conversation=conversation,
-                medication=medication
+                medication=medication,
             )
 
             file_handler.safe_write(prescription_path, content)
