@@ -50,7 +50,7 @@ dependencies = [
 ]
 
 [tool.pytest.ini_options]
-async_mode = "auto"
+asyncio_mode = "auto"
 pythonpath = ["."]
 testpaths = ["tests"]
 python_files = ["test_*py"]

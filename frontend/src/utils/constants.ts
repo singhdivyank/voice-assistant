@@ -421,6 +421,10 @@ export interface V2SessionStatus {
   };
 }
 
+export interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+}
+
 export interface ISpeechRecognition {
   continuous: boolean;
   lang: string;
@@ -433,7 +437,7 @@ export interface ISpeechRecognition {
   stop: () => void;
   abort: () => void;
 }
- 
+
 export interface SpeechRecognitionResultListEvent extends Event {
   results: SpeechRecognitionResultList;
   resultIndex: number;

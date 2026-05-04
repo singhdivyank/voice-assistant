@@ -83,4 +83,20 @@ class LLMManager(Singleton):
             raise LLMError(f"LLM streaming failed: {e}") from e
 
 
-llm_manager = LLMManager()
+def get_llm_manager() -> "LLMManager":
+    """Lazy singleton accessor — safe to import without API key."""
+    global _llm_manager_instance
+    if _llm_manager_instance is None:
+        _llm_manager_instance = LLMManager()
+    return _llm_manager_instance
+
+
+_llm_manager_instance: Optional["LLMManager"] = None
+
+
+class _LazyLLMManager:
+    def __getattr__(self, name: str):
+        return getattr(get_llm_manager(), name)
+
+
+llm_manager = _LazyLLMManager()

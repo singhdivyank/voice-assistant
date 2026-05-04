@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { errorMessages } from '@/utils/';
-import type { speechRecognitionHook, ISpeechRecognition, SpeechRecognitionResultListEvent, SpeechRecognitionOptions } from '@/utils/';
+import type { speechRecognitionHook, ISpeechRecognition, SpeechRecognitionResultListEvent, SpeechRecognitionOptions, SpeechRecognitionErrorEvent } from '@/utils/';
 
 type SpeechRecognitionCtor = new () => ISpeechRecognition;
 
@@ -71,7 +71,7 @@ export const useSpeechRecognition = (options: SpeechRecognitionOptions = {}): sp
                 onError?.(message);
             }
             setIsListening(false);
-        };
+        }
 
         recognition.onend = () => {
             console.warn('Speech recognition ended');

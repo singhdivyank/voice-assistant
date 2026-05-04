@@ -10,6 +10,7 @@ Fixture hierarchy:
   - FastAPI test client : client (uses mock_store + mock_diagnosis_service)
 """
 
+import os
 import uuid
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -19,7 +20,12 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
+
 # Domain helpers (no app import needed)
+@pytest.fixture(autouse=True, scope="session")
+def mock_google_api_key():
+    """Prevent ChatGoogleGenerativeAI from raising at import/init time in CI."""
+    os.environ.setdefault("GOOGLE_API_KEY", "test-key-not-real")
 
 
 @pytest.fixture()
@@ -71,8 +77,6 @@ def completed_session(diagnosis_session):
 
 
 # Schema / API payload fixtures
-
-
 @pytest.fixture()
 def session_create_payload():
     """Valid SessionCreate request body dict."""
@@ -111,8 +115,6 @@ def session_state(diagnosis_session):
 
 
 # In-memory session store (real implementation, no mocks)
-
-
 @pytest_asyncio.fixture()
 async def in_memory_store():
     """Real InMemorySessionStore, fresh for each test."""
@@ -122,8 +124,6 @@ async def in_memory_store():
 
 
 # Lightweight mocks
-
-
 @pytest.fixture()
 def mock_llm():
     """Mock ChatGoogleGenerativeAI that returns a fixed string."""
@@ -189,8 +189,6 @@ def mock_speech_service():
 
 
 # FastAPI TestClient
-
-
 @pytest.fixture()
 def client(mock_store, mock_diagnosis_service):
     """
@@ -232,8 +230,6 @@ async def async_client(mock_store, mock_diagnosis_service):
 
 
 # Private helpers
-
-
 async def _async_gen(items):
     for item in items:
         yield item
