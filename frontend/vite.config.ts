@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 
 const httpsConfig = () : { key: Buffer; cert: Buffer } | undefined => {
-  const keyPath = path.resolve(__dirname, 'loaclhost-key.pem');
+  const keyPath = path.resolve(__dirname, 'localhost-key.pem');
   const certPath = path.resolve(__dirname, 'localhost.pem');
   if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
     return {
@@ -30,10 +30,7 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
-    https: {
-      key: fs.readFileSync(path.resolve(__dirname, 'localhost-key.pem')),
-      cert: fs.readFileSync(path.resolve(__dirname, 'localhost.pem')),
-    },
+    https: httpsConfig(),
     proxy: {
       '/api': {
         target: 'http://localhost:8000',

@@ -1,6 +1,5 @@
 """Gmail MCP server integration tools"""
 
-import asyncio
 import json
 import logging
 from pydantic import BaseModel

@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from crewai_tools import BaseTool
+from crewai.tools import BaseTool
 
 from src.config.settings import get_settings
 from src.services.speech import SpeechRecognizer, TextToSpeech
