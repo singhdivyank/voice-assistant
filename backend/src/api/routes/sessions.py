@@ -4,6 +4,7 @@ import json
 import logging
 import uuid
 import tempfile
+from typing import Optional
 
 from pathlib import Path
 
@@ -35,7 +36,8 @@ router = APIRouter()
 settings = get_settings()
 
 file_handler = FileHandler()
-_diagnosis_service = DiagnosisService | None = None
+_diagnosis_service = Optional[DiagnosisService] = None
+
 
 def get_diagnosis_service() -> DiagnosisService:
     global _diagnosis_service
@@ -43,6 +45,7 @@ def get_diagnosis_service() -> DiagnosisService:
     if _diagnosis_service is None:
         _diagnosis_service = DiagnosisService()
     return _diagnosis_service
+
 
 @router.post("/", response_model=SessionResponse)
 async def create_session(

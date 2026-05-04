@@ -197,8 +197,8 @@ class DiagnosisSession:
         """Create session from dictionary"""
 
         patient = PatientInfo(
-            name=data.get("name", "Unknown"),
-            email=data.get("email", ""),
+            name=data.get("patient_name", "Unknown"),
+            email=data.get("patient_email", ""),
             age=data.get("patient_age", 1),
             gender=Gender.from_string(data.get("patient_gender", "other")),
         )

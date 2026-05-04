@@ -1,6 +1,7 @@
 """Diagnosis API routes"""
 
 import logging
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
@@ -13,7 +14,7 @@ from src.utils.consts import Language, DIAGNOSIS_PROMPT, MEDICATION_PROMPT
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-_diagnosis_engine = DiagnosisEngine | None = None
+_diagnosis_engine = Optional[DiagnosisEngine] = None
 
 
 def get_diagnosis_engine() -> DiagnosisEngine:
@@ -21,6 +22,7 @@ def get_diagnosis_engine() -> DiagnosisEngine:
     if _diagnosis_engine is None:
         _diagnosis_engine = DiagnosisEngine()
     return _diagnosis_engine
+
 
 @router.post("/questions", response_model=list[DiagnosisQuestion])
 async def generate_questions(request: DiagnosisRequest):
