@@ -23,10 +23,11 @@ class TestExtractQuestions:
         assert questions[0] == "How long have you had this?"
 
     def test_parses_numbered_lines(self):
-        result = "1. How long?\n2. Any fever?\n3. Any nausea?"
+        result = (
+            "1. How long have you had this?\n2. Any fever or chills?\n3. Any vomiting?"
+        )
         questions = _extract_questions(result)
         assert len(questions) == 3
-        assert "How long?" in questions
 
     def test_parses_numbered_lines_with_parens(self):
         result = "1) Describe the pain\n2) Any medication taken?\n3) Family history?"

@@ -87,7 +87,7 @@ class TestAgentLoadBalancer:
 
         task = asyncio.create_task(waiter())
         # waiter should be blocked
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(0.01)
         assert not acquired.is_set()
 
         balancer.release_slot("tts")

@@ -208,7 +208,10 @@ class DiagnosisSession:
             initial_complaint=data.get("initial_complaint", ""),
         )
         session.questions = data.get("questions", [])
-        session.conversation = []
+        session.conversation = [
+            ConversationTurn(question=t["question"], answer=t["answer"])
+            for t in data.get("conversation", [])
+        ]
         session.medication = data.get("medication")
         session.current_question_index = data.get("current_question_index", 0)
         session.status = data.get("status", "active")

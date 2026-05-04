@@ -155,7 +155,7 @@ class TestRedisSessionStore:
     async def test_get_deserializes_stored_session(
         self, redis_store, mock_redis, diagnosis_session
     ):
-        serialized = json.dumps(diagnosis_session.to_dict()).encode()
+        serialized = json.dumps(diagnosis_session.to_dict())
         mock_redis.get.return_value = serialized
         result = await redis_store.get(diagnosis_session.session_id)
         assert result is not None
