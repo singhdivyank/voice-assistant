@@ -198,7 +198,7 @@ def client(mock_store, mock_diagnosis_service):
 
     with (
         patch(
-            "src.api.routes.sessions.diagnosis_service",
+            "src.api.routes.sessions.get_diagnosis_service",
             return_value=mock_diagnosis_service,
         ),
         patch("src.core.crew_ai.medical_crew.MedicalCrew", MagicMock()),
@@ -219,7 +219,7 @@ async def async_client(mock_store, mock_diagnosis_service):
 
     with (
         patch(
-            "src.api.routes.sessions.diagnosis_service",
+            "src.api.routes.sessions.get_diagnosis_service",
             return_value=mock_diagnosis_service,
         ),
         patch("src.core.crew_ai.medical_crew.MedicalCrew", MagicMock()),
