@@ -7,7 +7,7 @@ from typing import AsyncIterator
 import google.genai as genai
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
 from langchain_core.tracers.langchain import LangChainTracer
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts.chat import ChatPromptTemplate
 
 from src.config.settings import get_settings
 from src.config.monitoring import telemetry, langsmith, timed_operation
