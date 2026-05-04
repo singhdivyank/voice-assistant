@@ -10,18 +10,18 @@ from src.core.diagnosis import DiagnosisEngine, DiagnosisService
 class TestParseQuestions:
     @pytest.fixture()
     def engine(self):
-        with patch("src.core.diagnosis.genai"), patch(
-            "src.core.diagnosis.ChatGoogleGenerativeAI"
-        ), patch("src.core.diagnosis.ChatPromptTemplate"):
+        with patch("src.core.diagnosis.ChatGoogleGenerativeAI"), patch(
+            "src.core.diagnosis.ChatPromptTemplate"
+        ):
             eng = DiagnosisEngine.__new__(DiagnosisEngine)
             eng.settings = MagicMock()
             return eng
 
     def test_parses_numbered_lines(self, engine):
-        raw = "1. How long?\n2. Any fever?\n3. Any vomiting?"
+        raw = "1. How long you had this?\n2. Any fever or chills?\n3. Any nausea or vomiting?"
         result = engine._parse_questions(raw)
         assert len(result) == 3
-        assert "How long?" in result
+        assert "How long you had this?" in result
 
     def test_returns_max_three(self, engine):
         raw = "\n".join(f"{i}. Question {i} which is long enough" for i in range(1, 8))
@@ -47,41 +47,38 @@ class TestParseQuestions:
 # DiagnosisEngine.generate_questions
 class TestGenerateQuestions:
     @pytest.fixture()
-    def engine_with_mock_llm(self, mock_llm):
-        with patch("src.core.diagnosis.genai"), patch(
-            "src.core.diagnosis.ChatGoogleGenerativeAI", return_value=mock_llm
-        ), patch("src.core.diagnosis.ChatPromptTemplate") as mock_prompt, patch(
-            "src.core.diagnosis.langsmith"
-        ):
-            mock_chain = MagicMock()
-            mock_chain.invoke.return_value = MagicMock(
-                content="1. How long have you had this?\n2. Any fever?\n3. Any vomiting?"
-            )
-            mock_prompt.from_messages.return_value.__or__ = MagicMock(
-                return_value=mock_chain
-            )
+    def engine_with_mock_llm(self):
+        with patch("src.core.diagnosis.ChatGoogleGenerativeAI"), patch(
+            "src.core.diagnosis.ChatPromptTemplate"
+        ), patch("src.core.diagnosis.langsmith"):
             eng = DiagnosisEngine()
-            eng.diagnosis_prompt = MagicMock()
-            eng.diagnosis_prompt.__or__ = MagicMock(return_value=mock_chain)
-            eng.llm = mock_llm
-            # Wire the chain directly
-            eng.chain = mock_chain
-            return eng
+
+        mock_chain = MagicMock()
+        mock_chain.invoke.return_value = MagicMock(
+            content="1. How long have you had this?\n2. Any fever?\n3. Any vomiting?"
+        )
+        eng.diagnosis_prompt = MagicMock()
+        eng.diagnosis_prompt.__or__ = MagicMock(return_value=mock_chain)
+        return eng
 
     def test_returns_list_of_strings(self, engine_with_mock_llm):
-        eng = engine_with_mock_llm
-        chain = MagicMock()
-        chain.invoke.return_value = MagicMock(
-            content="1. How long?\n2. Any fever?\n3. Nausea?"
-        )
-        with patch.object(eng, "diagnosis_prompt") as mock_dp:
-            mock_dp.__or__ = MagicMock(return_value=chain)
-            # Direct call to _parse_questions for isolation
-            result = eng._parse_questions(
-                "1. How long have you had this?\n2. Any fever?\n3. Any vomiting?"
-            )
+        result = engine_with_mock_llm.generate_questions("I have a headache")
         assert isinstance(result, list)
+        assert 1 <= len(result) <= 3
+        assert all(isinstance(q, str) for q in result)
+
+    def test_returns_up_to_three_questions(self, engine_with_mock_llm):
+        result = engine_with_mock_llm.generate_questions("chest pain")
         assert len(result) <= 3
+
+    def test_raises_diagnosis_error_on_llm_failure(self, engine_with_mock_llm):
+        from src.utils.exceptions import DiagnosisError
+
+        engine_with_mock_llm.diagnosis_prompt.__or__.return_value.invoke.side_effect = (
+            RuntimeError("LLM unavailable")
+        )
+        with pytest.raises(DiagnosisError):
+            engine_with_mock_llm.generate_questions("fever")
 
 
 # DiagnosisService

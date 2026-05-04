@@ -34,9 +34,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 settings = get_settings()
 
-diagnosis_service = DiagnosisService()
 file_handler = FileHandler()
+_diagnosis_service = DiagnosisService | None = None
 
+def get_diagnosis_service() -> DiagnosisService:
+    global _diagnosis_service
+
+    if _diagnosis_service is None:
+        _diagnosis_service = DiagnosisService()
+    return _diagnosis_service
 
 @router.post("/", response_model=SessionResponse)
 async def create_session(
@@ -57,7 +63,7 @@ async def create_session(
         logger.info("Initial complaint: %s", request.initial_complaint)
 
         if request.initial_complaint:
-            session = diagnosis_service.create_session(
+            session = get_diagnosis_service().create_session(
                 session_id=session_id,
                 patient=patient,
                 complaint=request.initial_complaint,
@@ -124,7 +130,7 @@ async def transcribe_and_respond(
 
             if not session.questions and not session.initial_complaint:
                 session.initial_complaint = answer_for_llm
-                session.questions = diagnosis_service.engine.generate_questions(
+                session.questions = get_diagnosis_service().engine.generate_questions(
                     answer_for_llm
                 )
                 session.current_question_index = 0
@@ -154,7 +160,7 @@ async def transcribe_and_respond(
                 }
 
             if question_index < len(session.questions):
-                diagnosis_service.add_response(
+                get_diagnosis_service().add_response(
                     session=session,
                     question_index=question_index,
                     answer=answer_for_llm,

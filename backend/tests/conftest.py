@@ -20,12 +20,7 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-
-# Domain helpers (no app import needed)
-@pytest.fixture(autouse=True, scope="session")
-def mock_google_api_key():
-    """Prevent ChatGoogleGenerativeAI from raising at import/init time in CI."""
-    os.environ.setdefault("GOOGLE_API_KEY", "test-key-not-real")
+os.environ.setdefault("GOOGLE_API_KEY", "test-key-not-real")
 
 
 @pytest.fixture()
