@@ -4,7 +4,7 @@ import json
 import logging
 from pydantic import BaseModel
 
-from crewai_tools import BaseTool
+from crewai.tools import BaseTool
 
 from src.core.mcp_client import GMailMCPClient
 from src.utils.consts import GmailSendInput, GmailReadInput
