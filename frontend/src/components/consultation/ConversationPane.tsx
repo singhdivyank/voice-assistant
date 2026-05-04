@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Bot, User } from 'lucide-react';
 import { Card } from '../ui/';
-import { ConversationPaneProps } from '@/utils/';
+import type { ConversationPaneProps } from '@/utils/';
 
 export const ConversationPane: React.FC<ConversationPaneProps> = ({ entries, className = '' }) => {
   const scrollRef = useRef<HTMLDivElement>(null);

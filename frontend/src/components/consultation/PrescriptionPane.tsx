@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Spinner } from '../ui/';
-import { PrescriptionPaneProps } from '@/utils/';
+import type { PrescriptionPaneProps } from '@/utils/';
 
 export const PrescriptionPane: React.FC<PrescriptionPaneProps> = ({
   content,

@@ -4,9 +4,9 @@ import logging
 import re
 from typing import AsyncIterator
 
-import google.generativeai as genai
+import google.genai as genai
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
-from langchain.callbacks.tracers import LangChainTracer
+from langchain_core.tracers.langchain import LangChainTracer
 from langchain.prompts import ChatPromptTemplate
 
 from src.config.settings import get_settings

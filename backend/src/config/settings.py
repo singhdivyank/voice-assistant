@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from functools import lru_cache
-from typing import Optional
+from typing import ClassVar, List
 
 from pydantic import Field, ConfigDict
 from pydantic_settings import BaseSettings
@@ -60,8 +60,8 @@ class Settings(BaseSettings):
     redis_url: str = Field(default="", alias="REDIS_URL")
     session_ttl: int = 3600
 
-    # CORS origins
-    origins = [
+    # CORS origins (fix: tell PydanticV2 this is class-level constant, not modified field)
+    origins: ClassVar[List[str]] = [
         "https://localhost:3000",
         "http://localhost:3000",
         "https://127.0.0.1:3000",

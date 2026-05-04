@@ -1,6 +1,7 @@
 import React from 'react';
 
-import { CardProps, CardHeaderProps, paddingStyles } from '@/utils/';
+import { paddingStyles } from '@/utils/';
+import type { CardProps, CardHeaderProps } from '@/utils/';
 
 export const Card: React.FC<CardProps> = ({
   children,

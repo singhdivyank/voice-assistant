@@ -1,6 +1,7 @@
 import React from 'react';
 
-import { ButtonVariant, ButtonSize, variantStyles, sizeStyles } from '@/utils/';
+import { variantStyles, sizeStyles } from '@/utils/';
+import type { ButtonVariant, ButtonSize } from '@/utils/';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;

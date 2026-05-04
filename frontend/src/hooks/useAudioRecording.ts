@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
-import { AudioRecordingHook, AudioRecordingOptions, ERROR_MESSAGES } from '@/utils/';
+import { ERROR_MESSAGES } from '@/utils/';
+import type { AudioRecordingHook, AudioRecordingOptions } from '@/utils/';
 
 export const useAudioRecording = (options: AudioRecordingOptions = {}): AudioRecordingHook => {
     const { onRecordingComplete, onError } = options;

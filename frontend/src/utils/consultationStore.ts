@@ -13,7 +13,7 @@
 
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import {
+import type {
   ConsultationPhase,
   ConversationTurn,
   DoctorAction,
@@ -30,48 +30,51 @@ interface ConsultationState {
   workflowStep: WorkflowStep;
   patientData: PatientFormData;
   phase: ConsultationPhase;
-  questions: string[];
-  questionsEnglish: string[];
+  questions: string[];                 // patient-language questions
+  questionsEnglish: string[];          // english originals (for reference)
   conversationHistory: ConversationTurn[];
   currentQuestion: string | null;
   currentQuestionIndex: number;
   totalQuestions: number;
   medicationRecommendations: string;
-  medicationEnglish: string;
+  medicationEnglish: string;           // English version for non-EN sessions
   diagnosisInfo: {
     symptom_analysis: string;
     differential_diagnosis: string;
     final_diagnosis: string;
   } | null;
-
   mcpReview: MCPReviewState;
   prescriptionContent: string | null;
-
-  // initial session creation
-  isLoading: boolean;
-  // STT in progress
-  isProcessingAudio: boolean;
-  // any crew agent working
-  isProcessing: boolean;
-  // TTS playback in progress
-  isSpeaking: boolean;
-  // consultation fully done
-  isComplete: boolean;
+  isLoading: boolean;                  // initial session creation
+  isProcessingAudio: boolean;          // STT in progress
+  isProcessing: boolean;               // any crew agent working
+  isSpeaking: boolean;                 // TTS playback in progress
+  isComplete: boolean;                 // consultation fully done
   error: string | null;
-
   setPatientData: (data: Partial<PatientFormData>) => void;
+
   /** Step 1: welcome audio + create V2 session via process-initial-symptom */
   startVoiceConsultation: () => Promise<void>;
+
   /** Steps 2-4: send audio or text complaint → receive questions */
   processInitialSymptom: (audioBlob?: Blob, textComplaint?: string) => Promise<void>;
+
   /** Steps 5-6: answer one Q&A question */
   submitAnswer: (answer: string) => Promise<void>;
+
   /** Step 7+8: generate recommendations text then TTS */
   generateRecommendations: () => Promise<void>;
-  //Moves phase to 'prescription-review'.
+
+  /**
+   * Steps 9-10: generate prescription + send to doctor via Gmail MCP.
+   * Moves phase to 'prescription-review'.
+   */
   sendPrescriptionForReview: () => Promise<void>;
 
-  //MCP: submit the doctor's email reply.
+  /**
+   * MCP: submit the doctor's email reply.
+   * Called from the PrescriptionReview UI with pasted email content.
+   */
   submitDoctorResponse: (emailContent: string) => Promise<void>;
 
   reset: () => void;
@@ -163,6 +166,8 @@ export const useConsultationStore = create<ConsultationState>()(
           }
         },
 
+        // ── Steps 2-4: process initial symptom ────────────────────────────
+
         processInitialSymptom: async (audioBlob?: Blob, textComplaint?: string) => {
           const { patientData, sessionId } = get();
           set({ isProcessingAudio: true, error: null });
@@ -199,6 +204,8 @@ export const useConsultationStore = create<ConsultationState>()(
             throw err;
           }
         },
+
+        // ── Steps 5-6: answer a Q&A question ─────────────────────────────
 
         submitAnswer: async (answer: string) => {
           const {
@@ -255,6 +262,8 @@ export const useConsultationStore = create<ConsultationState>()(
           }
         },
 
+        // ── Step 7+8: recommendations ─────────────────────────────────────
+
         generateRecommendations: async () => {
           const { sessionId, patientData } = get();
           if (!sessionId) return;
@@ -262,6 +271,7 @@ export const useConsultationStore = create<ConsultationState>()(
           set({ isProcessing: true, error: null, workflowStep: 'recommendations_generated' });
 
           try {
+            // Step 7 — CrewAI diagnosis + pharmacist agents
             const recResult = await v2Client.generateRecommendations(sessionId);
 
             set({
@@ -270,6 +280,7 @@ export const useConsultationStore = create<ConsultationState>()(
               diagnosisInfo: recResult.diagnosis,
             });
 
+            // Step 8 — TTS of recommendations (best-effort)
             try {
               const audioResult = await v2Client.generateRecommendationsAudio(
                 recResult.recommendations,
@@ -291,6 +302,8 @@ export const useConsultationStore = create<ConsultationState>()(
             throw err;
           }
         },
+
+        // ── Steps 9-10: prescription + MCP ───────────────────────────────
 
         sendPrescriptionForReview: async () => {
           const { sessionId, medicationRecommendations } = get();
@@ -327,6 +340,8 @@ export const useConsultationStore = create<ConsultationState>()(
             throw err;
           }
         },
+
+        // ── MCP: process doctor response ──────────────────────────────────
 
         submitDoctorResponse: async (emailContent: string) => {
           const { mcpReview } = get();
@@ -367,6 +382,7 @@ export const useConsultationStore = create<ConsultationState>()(
 
       {
         name: 'consultation-storage-v2',
+        // Only persist patient preferences — session state is ephemeral
         partialize: (state) => ({
           patientData: state.patientData,
         }),

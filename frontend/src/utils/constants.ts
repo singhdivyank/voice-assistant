@@ -1,20 +1,13 @@
 export type AlertVariant = 'info' | 'success' | 'warning' | 'error';
 export type ButtonVariant = 'primary' | 'secondary' | 'success' | 'danger' | 'ghost';
 export type ButtonSize = 'sm' | 'md' | 'lg';
-export type ConsultationPhase =
-  | 'patient-info'
-  | 'voice-consultation'
-  | 'prescription-review';
-
+export type ConsultationPhase = 'patient-info' | 'voice-consultation' | 'prescription-review';
 export type Language =
   | 'en' | 'hi' | 'bn' | 'gu' | 'kn'
   | 'ml' | 'ta' | 'te' | 'ur' | 'es'
   | 'fr' | 'zh' | 'ja' | 'ko' | 'mr';
-
 export type Gender = 'male' | 'female' | 'other' | 'undisclosed';
-type SessionStatus = 'active' | 'completed' | 'cancelled';
-
-// V2 workflow step enum
+export type SessionStatus = 'active' | 'completed' | 'cancelled';
 export type WorkflowStep =
   | 'welcome'
   | 'initial_symptom'
@@ -28,7 +21,7 @@ export type WorkflowStep =
   | 'completed'
   | 'error';
 
-export type DoctorAction = 'APPROVED' | 'MODIFIED' | 'REJECTED' | 'TIMEOUT' | 'UNCLEAR' | 'ERROR';
+export type DoctorAction = 'APPROVED' | 'MODIFIED' | 'REJECTED' | 'TIMEOUT' | 'UNCLEAR'| 'ERROR';
 export const API_BASE_V1 = import.meta.env.VITE_API_URL_V1 || 'http://localhost:8000/api/v1';
 export const API_BASE_V2 = import.meta.env.VITE_API_URL_V2 || 'http://localhost:8000/api/v2';
 export const API_BASE_URL = API_BASE_V1;
@@ -217,11 +210,6 @@ export interface speechRecognitionHook {
   resetTranscript: () => void;
 }
 
-export interface SpeechRecognitionEvent extends Event {
-  results: SpeechRecognitionResultList;
-  resultIndex: number;
-}
-
 export interface PrescriptionPaneProps {
   content: string | null;
   medicationEnglish?: string | null;
@@ -306,7 +294,44 @@ export interface StreamingChunk {
   is_final: boolean;
 }
 
-/** POST /api/v2/workflow/process-initial-symptom (multipart/form-data) */
+export interface SessionCreate {
+  patient_name: string;
+  patient_email: string;
+  patient_age: number;
+  patient_gender: Gender;
+  language: Language;
+  initial_complaint: string;
+}
+
+export interface SessionResponse {
+  session_id: string;
+  created_at: string;
+  status: SessionStatus;
+  patient_name: string;
+  patient_email: string;
+  patient_age: number;
+  patient_gender: Gender;
+  language: Language;
+  initial_complaint: string;
+  questions: string[];
+}
+
+export interface SessionState {
+  session_id: string;
+  status: SessionStatus;
+  patient_name: string;
+  patient_email: string;
+  patient_age: number;
+  patient_gender: Gender;
+  language: Language;
+  initial_complaint: string;
+  questions: string[];
+  conversation: ConversationTurn[];
+  current_question_index: number;
+  medication: string | null;
+  prescription_path: string | null;
+}
+
 export interface V2InitialSymptomRequest {
   session_id?: string;
   patient_age: number;
@@ -316,7 +341,6 @@ export interface V2InitialSymptomRequest {
   audio_file?: File | Blob;
 }
 
-/** Response from /api/v2/workflow/process-initial-symptom */
 export interface V2InitialSymptomResponse {
   status: string;
   questions: string[];
@@ -326,7 +350,6 @@ export interface V2InitialSymptomResponse {
   session_id: string;
 }
 
-/** Response from /api/v2/workflow/welcome-audio */
 export interface V2WelcomeAudioResponse {
   status: string;
   audio_base64: string;
@@ -334,7 +357,6 @@ export interface V2WelcomeAudioResponse {
   step: string;
 }
 
-/** Response from /api/v2/workflow/answer-question/{session_id} */
 export interface V2AnswerResponse {
   status: string;
   question_index: number;
@@ -345,7 +367,6 @@ export interface V2AnswerResponse {
   next_step: string;
 }
 
-/** Response from /api/v2/workflow/generate-recommendations/{session_id} */
 export interface V2RecommendationsResponse {
   status: string;
   recommendations: string;
@@ -358,14 +379,12 @@ export interface V2RecommendationsResponse {
   step: string;
 }
 
-/** Response from /api/v2/workflow/recommendations-audio */
 export interface V2RecommendationsAudioResponse {
   status: string;
   audio_base64: string;
   step: string;
 }
 
-/** Response from /api/v2/workflow/generate-prescription/{session_id} */
 export interface V2PrescriptionResponse {
   status: string;
   prescription_generated: boolean;
@@ -376,7 +395,6 @@ export interface V2PrescriptionResponse {
   step: string;
 }
 
-/** Response from /api/v2/workflow/doctor-response */
 export interface V2DoctorResponseResult {
   status: string;
   review_id: string;
@@ -386,7 +404,6 @@ export interface V2DoctorResponseResult {
   step: string;
 }
 
-/** GET /api/v2/workflow/session/{session_id}/status */
 export interface V2SessionStatus {
   session_id: string;
   status: string;
@@ -402,44 +419,6 @@ export interface V2SessionStatus {
     completion_percentage: number;
     all_answered: boolean;
   };
-}
-
-export interface SessionCreate {
-  patient_name: string;
-  patient_email: string;
-  patient_age: number;
-  patient_gender: Gender;
-  language: Language;
-  initial_complaint: string;
-}
-
-export interface SessionResponse {
-  session_id: string;
-  created_at: string;
-  status: string;
-  patient_name: string;
-  patient_email: string;
-  patient_age: number;
-  patient_gender: Gender;
-  language: Language;
-  initial_complaint: string;
-  questions: string[];
-}
-
-export interface SessionState {
-  session_id: string;
-  status: string;
-  patient_name: string;
-  patient_email: string;
-  patient_age: number;
-  patient_gender: Gender;
-  language: Language;
-  initial_complaint: string;
-  questions: string[];
-  conversation: ConversationTurn[];
-  current_question_index: number;
-  medication: string | null;
-  prescription_path: string | null;
 }
 
 /** V2 MCP review state tracked in the store */

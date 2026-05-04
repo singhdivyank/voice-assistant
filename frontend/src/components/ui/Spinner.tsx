@@ -1,6 +1,7 @@
 import React from 'react';
 
-import { spinnerSizes, SpinnerProps } from '@/utils/';
+import { spinnerSizes } from '@/utils/';
+import type { SpinnerProps } from '@/utils/';
 
 export const Spinner: React.FC<SpinnerProps> = ({ size = 'md', className = '' }) => {
   return (

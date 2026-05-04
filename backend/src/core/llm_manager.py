@@ -3,9 +3,9 @@
 import logging
 from typing import Any, AsyncIterator, Dict, Optional
 
-import google.generativeai
+import google.genai
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.callbacks.tracers import LangChainTracer
+from langchain_core.tracers.langchain import LangChainTracer
 
 from src.config.settings import get_settings
 from src.config.monitoring import langsmith, timed_operation, telemetry
@@ -43,7 +43,7 @@ class LLMManager(Singleton):
 
     def configure_api(self):
         """Configure the Google Generative AI API"""
-        google.generativeai.configure(api_key=settings.google_api_key)
+        google.genai.configure(api_key=settings.google_api_key)
 
     def create_llm(self) -> None:
         """Create LLM instance with monitoring"""

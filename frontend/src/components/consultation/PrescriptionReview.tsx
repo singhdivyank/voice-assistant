@@ -3,9 +3,7 @@ import { ClipboardCheck, Mail, Clock, CheckCircle, XCircle, AlertTriangle, Refre
 import toast from 'react-hot-toast';
 import { Button, Alert, Spinner, Card } from '../ui/';
 import { useConsultationStore } from '@/utils/consultationStore';
-import { DoctorAction } from '@/utils/constants';
-
-// ─── Status display helpers ───────────────────────────────────────────────────
+import type { DoctorAction } from '@/utils/';
 
 const ACTION_CONFIG: Record<
   DoctorAction,
@@ -43,8 +41,6 @@ const ACTION_CONFIG: Record<
   },
 };
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export const PrescriptionReview: React.FC = () => {
   const {
     mcpReview,
@@ -53,7 +49,6 @@ export const PrescriptionReview: React.FC = () => {
     patientData,
     isProcessing,
     error,
-    isComplete,
     submitDoctorResponse,
     sendPrescriptionForReview,
     reset,
@@ -93,7 +88,6 @@ export const PrescriptionReview: React.FC = () => {
 
   const sentTime = sentAt ? new Date(sentAt).toLocaleTimeString() : null;
 
-  // ── Post-action result view ─────────────────────────────────────────────────
   if (action) {
     const cfg = ACTION_CONFIG[action];
     return (
@@ -150,7 +144,6 @@ export const PrescriptionReview: React.FC = () => {
     );
   }
 
-  // ── Awaiting doctor response ────────────────────────────────────────────────
   return (
     <div className="max-w-2xl mx-auto space-y-6">
 

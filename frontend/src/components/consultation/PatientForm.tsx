@@ -5,11 +5,11 @@ import { useSpeechSynthesis } from '@/hooks/';
 import { 
   GENDERS_MAP, 
   LANGUAGE_MAP,
-  PatientFormData,
   useConsultationStore,
   introText,
   emailRegex,
 } from '@/utils/';
+import type { PatientFormData } from '@/utils/';
 import { Button, Input, Select } from '../ui/';
 
 const languageOptions = Object.entries(LANGUAGE_MAP).map(([value, label]) => ({ value, label }));
@@ -92,12 +92,12 @@ export const PatientForm: React.FC = () => {
     cancel();
     try {
       await startVoiceConsultation();
-    } catch (err: any) {
-      setError(err.message || 'Failed to start session');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to start session');
     }
   };
 
-  const handleInputChange = (field: keyof PatientFormData, value: any) => {
+  const handleInputChange = (field: keyof PatientFormData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 

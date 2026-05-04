@@ -2,7 +2,7 @@ import React from 'react';
 import { Volume2, VolumeX, Play, Pause} from 'lucide-react';
 import { useSpeechSynthesis } from '@/hooks/';
 import { Button } from '../ui/';
-import { SpeechControlProps } from '@/utils/';
+import type { SpeechControlProps } from '@/utils/';
 
 export const SpeechControls: React.FC<SpeechControlProps> = ({
     text,

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { SpeechSynthesisOptions, SpeechSynthesisHook } from '@/utils/';
+import type { SpeechSynthesisOptions, SpeechSynthesisHook } from '@/utils/';
 
 export const useSpeechSynthesis = (options: SpeechSynthesisOptions = {}): SpeechSynthesisHook => {
     const {
@@ -59,8 +59,8 @@ export const useSpeechSynthesis = (options: SpeechSynthesisOptions = {}): Speech
         }
 
         utterance.onstart = () => {
-            setIsPaused(true);
-            setIsSpeaking(false);
+            setIsSpeaking(true);
+            setIsPaused(false);
             onStart?.();
         };
 
@@ -78,7 +78,7 @@ export const useSpeechSynthesis = (options: SpeechSynthesisOptions = {}): Speech
 
         utteranceRef.current = utterance;
         window.speechSynthesis.speak(utterance);
-    }, [isSupported, language, pitch, rate, volume, voiceName, onStart, onEnd, onError]);
+    }, [isSupported, language, pitch, rate, volume, voiceName, voices, onStart, onEnd, onError]);
 
     const pause = useCallback(() => {
         if (!isSupported) return;

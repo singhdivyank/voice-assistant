@@ -5,9 +5,8 @@
  * consultation flow now uses V2 (/api/v2/workflow/*).
  */
 
-import {
-  API_BASE_V1,
-  API_BASE_V2,
+import { API_BASE_V1, API_BASE_V2 } from '@/utils/';
+import type {
   ApiError,
   DiagnosisQuestion,
   MedicationResponse,
@@ -23,7 +22,7 @@ import {
   V2PrescriptionResponse,
   V2DoctorResponseResult,
   V2SessionStatus,
-} from '../utils/constants';
+} from '@/utils/';
 
 async function request<T>(
   url: string,
@@ -74,37 +73,44 @@ class V1ApiClient {
       body: JSON.stringify(data),
     });
   }
+
   getSession(sessionId: string): Promise<SessionState> {
     return request(this.url(`/sessions/${sessionId}`));
   }
+
   deleteSession(sessionId: string): Promise<void> {
     return request(this.url(`/sessions/${sessionId}`), { method: 'DELETE' });
   }
+
   generateQuestions(complaint: string): Promise<DiagnosisQuestion[]> {
     return request(this.url('/diagnosis/questions'), {
       method: 'POST',
       body: JSON.stringify({ complaint }),
     });
   }
+
   generatePrescription(sessionId: string): Promise<PrescriptionResponse> {
     return request(this.url(`/prescription/${sessionId}/generate`), {
       method: 'POST',
     });
   }
+
   previewPrescription(sessionId: string): Promise<{ session_id: string; content: string }> {
     return request(this.url(`/prescription/${sessionId}/preview`));
   }
+
   getPrescriptionDownloadUrl(sessionId: string): string {
     return `${this.base}/prescription/${sessionId}/download`;
   }
+
   completeSession(sessionId: string): Promise<MedicationResponse> {
     return request(this.url(`/sessions/${sessionId}/complete`), { method: 'POST' });
   }
+
   healthCheck(): Promise<{ status: string; version: string }> {
     return request(this.url('/health'));
   }
 }
-
 
 class V2ApiClient {
   private base = API_BASE_V2;

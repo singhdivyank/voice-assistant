@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { ConversationPane, PrescriptionPane } from '../consultation/';
 import { Alert, Button, ProgressBar } from '../ui/';
 import { useAudioRecording } from '@/hooks/';
-import { ConversationEntry } from '@/utils/constants';
+import type { ConversationEntry } from '@/utils/';
 import { useConsultationStore } from '@/utils/consultationStore';
 
 export const VoiceConsultation: React.FC = () => {
@@ -86,8 +86,6 @@ export const VoiceConsultation: React.FC = () => {
     onError: handleRecordingError,
   });
 
-  // ── Sync state ──────────────────────────────────────────────────────────────
-
   useEffect(() => {
     setIsCollectingInitialSymptoms(!currentQuestion && !isComplete && questions.length === 0);
   }, [currentQuestion, isComplete, questions]);
@@ -95,8 +93,6 @@ export const VoiceConsultation: React.FC = () => {
   useEffect(() => {
     if (error) toast.error(error);
   }, [error]);
-
-  // ── Conversation entries for ConversationPane ───────────────────────────────
 
   const conversationEntries: ConversationEntry[] = [];
   if (isCollectingInitialSymptoms) {
@@ -114,16 +110,12 @@ export const VoiceConsultation: React.FC = () => {
     }
   }
 
-  // ── Derived UI flags ────────────────────────────────────────────────────────
-
   const showProcessing = isProcessingAudio || (isProcessing && !isComplete);
   const canRecord = !showProcessing && !isComplete;
   const prescriptionLoading = isProcessing && !medicationRecommendations;
   const qaProgress = totalQuestions > 0
     ? Math.round((currentQuestionIndex / totalQuestions) * 100)
     : 0;
-
-  // ── Not-supported / no-session guards ──────────────────────────────────────
 
   if (!isSupported) {
     return (
@@ -140,8 +132,6 @@ export const VoiceConsultation: React.FC = () => {
       </Alert>
     );
   }
-
-  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-4">
