@@ -2,4 +2,5 @@ export { PatientForm } from './PatientForm';
 export { ConversationDisplay } from './ConservationDisplay';
 export { ConversationPane } from './ConversationPane';
 export { PrescriptionPane } from './PrescriptionPane';
+export { PrescriptionReview } from './PrescriptionReview';
 export { VoiceConsultation } from './VoiceConsultation';

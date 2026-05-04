@@ -47,3 +47,17 @@ dependencies = [
     "redis[hiredis]==7.4.0",
     "python-dotenv==1.2.2"
 ]
+
+[tool.pytest.ini_options]
+async_mode = "auto"
+pythonpath = ["."]
+testpaths = ["tests"]
+python_files = ["test_*py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "asyncio: async test",
+    "unit: unit tests (no external deps)",
+    "integration: integration tests (real FastAPI app, mocked externals)",
+]

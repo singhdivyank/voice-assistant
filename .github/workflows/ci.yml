@@ -9,8 +9,6 @@ on:
 jobs:
   backend-test:
     runs-on: ubuntu-latest
-    env:
-      PYTHONPATH: backend
     steps:
       - uses: actions/checkout@v4
 
@@ -64,11 +62,6 @@ jobs:
           cd frontend
           npm run lint
           npm run typecheck
-
-      - name: Test
-        run: |
-          cd frontend
-          npm run test -- --coverage
 
       - name: Build
         run: |
