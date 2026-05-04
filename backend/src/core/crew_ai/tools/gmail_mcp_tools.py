@@ -9,6 +9,7 @@ from crewai_tools import BaseTool
 
 from src.core.mcp_client import GMailMCPClient
 from src.utils.consts import GmailSendInput, GmailReadInput
+from src.utils.helpers import run_async
 
 logger = logging.getLogger(__name__)
 gmail_client = GMailMCPClient()
@@ -26,9 +27,9 @@ class GMailMCPSendTool(BaseTool):
 
         try:
             if not gmail_client.connected:
-                asyncio.run(gmail_client.connect())
+                run_async(gmail_client.connect())
 
-            result = asyncio.run(
+            result = run_async(
                 gmail_client.send_email(to_email=to, subject=subject, body=body)
             )
 
@@ -69,9 +70,11 @@ class GMailMCPReadTool(BaseTool):
 
         try:
             if not gmail_client.connected:
-                asyncio.run(gmail_client.connect())
+                run_async(gmail_client.connect())
 
-            emails = asyncio.run(gmail_client.read_emails(search_query, max_results))
+            emails = run_async(
+                gmail_client.read_emails(query=search_query, max_results=max_results)
+            )
             return json.dumps(
                 {"status": "EMAIL_READ", "count": len(emails), "emails": emails}
             )

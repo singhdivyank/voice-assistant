@@ -56,7 +56,7 @@ class Language(Enum):
         return mapping.get(name.lower(), cls.ENGLISH)
 
     @classmethod
-    def from_code(cls, code: str) -> "Language":
+    def from_code(cls, code: str | None) -> "Language":
         """Get language enum from ISO code (e.g. 'en', 'hi', 'es')"""
         if not code:
             return cls.ENGLISH
@@ -176,6 +176,8 @@ class DiagnosisSession:
 
         return {
             "session_id": self.session_id,
+            "patient_name": self.patient.name,
+            "patient_email": self.patient.email,
             "patient_age": self.patient.age,
             "patient_gender": self.patient.gender.value,
             "initial_complaint": self.initial_complaint,
@@ -196,7 +198,7 @@ class DiagnosisSession:
 
         patient = PatientInfo(
             name=data.get("name", "Unknown"),
-            email=data.get("email", "abc@example.com"),
+            email=data.get("email", ""),
             age=data.get("patient_age", 1),
             gender=Gender.from_string(data.get("patient_gender", "other")),
         )

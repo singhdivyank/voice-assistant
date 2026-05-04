@@ -41,7 +41,9 @@ class DiagnosisEngine:
 
         callbacks = []
         if langsmith.enabled:
-            callbacks.append(LangChainTracer(project_name=self.settings.langsmith_project))
+            callbacks.append(
+                LangChainTracer(project_name=self.settings.langsmith_project)
+            )
 
         self.llm = ChatGoogleGenerativeAI(
             name=self.settings.name,
@@ -83,8 +85,8 @@ class DiagnosisEngine:
             with telemetry.span(
                 "llm_diagnosis_questions", {"complaint_length": len(complaint)}
             ):
-                chain = self.diagnosis_prompt | self.llm
-                response = chain.invoke({"input": complaint})
+                self.chain = self.diagnosis_prompt | self.llm
+                response = self.chain.invoke({"input": complaint})
                 questions = self._parse_questions(response.content)
                 logger.info("Generated questions:")
                 logger.info(questions)

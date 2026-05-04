@@ -85,7 +85,7 @@ class MCPWorkflowManager:
         return {
             "action": "TIMEOUT",
             "review_id": review_id,
-            "message": "Doctor dod not respond in time",
+            "message": "Doctor did not respond in time",
         }
 
     async def get_mcp_metrics(self) -> Dict[str, Any]:
@@ -97,8 +97,7 @@ class MCPWorkflowManager:
         total_sla_checked = 0
 
         try:
-            reviews = getattr(self, "reviews", {})
-            for _, review in reviews.items():
+            for _, review in self.pending_reviews.items():
                 status = review.get("status")
                 created_at = review.get("created_at")
                 completed_at = review.get("completed_at")

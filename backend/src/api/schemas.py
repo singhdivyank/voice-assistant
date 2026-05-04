@@ -8,7 +8,7 @@ from src.utils.consts import Gender, Language
 
 class DiagnosisRequest(BaseModel):
     """Schema for diagnosis request"""
-    
+
     complaint: str = Field(..., min_length=5, max_length=2000)
 
 
@@ -77,9 +77,12 @@ class PatientResponse(BaseModel):
     gender: str
     language: str
 
+
 class SessionCreate(BaseModel):
     """Model for creating new consultation session"""
 
+    patient_name: str = Field(default="Unknown", max_length=200)
+    patient_email: str = Field(default="", max_length=200)
     patient_age: int = Field(..., ge=1, le=90)
     patient_gender: str = Field(default="other")
     language: str = Field(default="en")
@@ -92,11 +95,31 @@ class SessionResponse(BaseModel):
     session_id: str
     created_at: datetime
     status: str
+    patient_name: str
+    patient_email: str
     patient_age: int
     patient_gender: str
     language: str
     initial_complaint: str
     questions: list[str] = []
+
+
+class SessionState(BaseModel):
+    """Full session state"""
+
+    session_id: str
+    status: str
+    patient_name: str = "Unknown"
+    patient_email: str = ""
+    patient_age: int
+    patient_gender: str
+    language: str
+    initial_complaint: str
+    questions: list[str]
+    conversation: list[ConversationTurnSchema]
+    current_question_index: int
+    medication: Optional[str] = None
+    prescription_path: Optional[str] = None
 
 
 class ConversationTurnSchema(BaseModel):
@@ -111,19 +134,3 @@ class SubmitAnswer(BaseModel):
 
     question_index: int = Field(..., ge=0)
     answer: str = Field(..., min_length=1, max_length=2000)
-
-
-class SessionState(BaseModel):
-    """Full session state"""
-
-    session_id: str
-    status: str
-    patient_age: int
-    patient_gender: str
-    language: str
-    initial_complaint: str
-    questions: list[str]
-    conversation: list[ConversationTurnSchema]
-    current_question_index: int
-    medication: Optional[str] = None
-    prescription_path: Optional[str] = None

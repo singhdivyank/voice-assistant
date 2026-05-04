@@ -12,6 +12,17 @@ from typing import Optional
 from crewai_tools import BaseTool
 
 from src.config.settings import get_settings
+from src.services.speech import SpeechRecognizer, TextToSpeech
+from src.services.translation import TranslationService
+from src.core.llm_manager import llm_manager
+from src.utils.consts import (
+    DIAGNOSIS_PROMPT,
+    Language,
+    MEDICATION_PROMPT,
+    PRESCRIPTION_TEMPLATE,
+)
+from src.utils.file_handler import FileHandler
+from src.utils.helpers import run_async
 
 settings = get_settings()
 
@@ -24,10 +35,6 @@ class SpeechToTextTool(BaseTool):
         """Transcribe audio file to text"""
 
         try:
-
-            from src.services.speech import SpeechRecognizer
-            from src.utils.consts import Language
-
             language = Language.from_code(language_code)
             recognizer = SpeechRecognizer(language)
             text = recognizer.transcribe_from_file(Path(audio_file_path))
@@ -46,13 +53,9 @@ class TextToSpeechTool(BaseTool):
         """Generate audio from text"""
 
         try:
-
-            from src.services.speech import TextToSpeech
-            from src.utils.consts import Language
-
             language = Language.from_code(language_code)
             tts = TextToSpeech(language)
-            audio_bytes = asyncio.run(tts.synthesize(text))
+            audio_bytes = run_async(tts.synthesize(text))
 
             if not filename:
                 file_id = uuid.uuid4().hex[:8]
@@ -74,13 +77,8 @@ class TranslationTool(BaseTool):
         """Translate text"""
 
         try:
-
-            from src.services.translation import TranslationService
-            from src.utils.consts import Language
-
             given_lang = Language.from_code(code=source_lang)
             translator = TranslationService(given_lang)
-
             if target_lang.lower() in ["en", "english"]:
                 return translator.to_english(text)
 
@@ -99,12 +97,8 @@ class QuestionGenerationTool(BaseTool):
         questions = []
 
         try:
-
-            from src.core.llm_manager import llm_manager
-            from src.utils.consts import DIAGNOSIS_PROMPT
-
             prompt = DIAGNOSIS_PROMPT.format(input=complaint)
-            response = asyncio.run(llm_manager.call_llm(prompt, {"agent": "qa"}))
+            response = run_async(llm_manager.call_llm(prompt, {"agent": "qa"}))
 
             for line in response.split("\n"):
                 cleaned_text = re.sub(r"^\d+[\.\)]\s*", "", line.strip())
@@ -124,10 +118,6 @@ class MedicationTool(BaseTool):
         """Generate medication recommendations"""
 
         try:
-
-            from src.core.llm_manager import llm_manager
-            from src.utils.consts import MEDICATION_PROMPT
-
             prompt = MEDICATION_PROMPT.format(
                 age=patient_age, gender=patient_gender, conversation=diagnosis
             )
@@ -155,10 +145,6 @@ class PrescriptionTool(BaseTool):
         """Generate prescription document"""
 
         try:
-
-            from src.utils.file_handler import FileHandler
-            from src.utils.consts import PRESCRIPTION_TEMPLATE
-
             file_handler = FileHandler()
             # TODO- instead of session id use patient name
             prescription_path = (
