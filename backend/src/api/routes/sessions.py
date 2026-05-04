@@ -298,7 +298,7 @@ async def submit_answer(
     answer_for_llm = _translate_text_to_english(request.answer, usr_lang)
 
     with telemetry.span("api_submit_answer", {"session_id": session_id}):
-        diagnosis_service.add_response(
+        get_diagnosis_service().add_response(
             session=session,
             question_index=request.question_index,
             answer=answer_for_llm,
@@ -341,7 +341,7 @@ async def complete_session(
         )
 
     with telemetry.span("api_complete_session", {"session_id": session_id}):
-        medication_en = diagnosis_service.complete_session(session)
+        medication_en = get_diagnosis_service().complete_session(session)
         await store.save(session)
 
         medication_user = _translate_text_to_user(medication_en, lang)
@@ -366,7 +366,7 @@ async def complete_session_stream(
 
     async def generate():
         full_en = []
-        async for chunk in diagnosis_service.complete_session_stream(session):
+        async for chunk in get_diagnosis_service().complete_session_stream(session):
             full_en.append(chunk)
             if lang == "en":
                 yield f"data: {chunk}\n\n"
