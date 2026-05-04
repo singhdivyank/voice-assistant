@@ -1,7 +1,8 @@
 """Agents for mutli-agent system"""
 
-from crewai import Agent
+from crewai import Agent, LLM
 
+from src.config.settings import get_settings
 from src.core.crew_ai.tools.medical_tools import (
     MedicationTool,
     PrescriptionTool,
@@ -20,11 +21,20 @@ from src.utils.backstories import (
 )
 from src.utils.consts import PRESCRIPTION_TEMPLATE
 
+settings = get_settings()
+
+gemini_llm = LLM(
+    model=f"gemini/{settings.gemini_model}",
+    api_key=settings.google_api_key,
+    temperature=settings.llm_temperature,
+)
+
 speech_processor = Agent(
     role="Speech Processing Specialist",
     goal="Accurately convert speech to text and text to speech for medical consultations",
     backstory=SPEECH_BACKSTORY,
     tools=[SpeechToTextTool(), TextToSpeechTool()],
+    llm=gemini_llm,
     verbose=True,
 )
 
@@ -34,6 +44,7 @@ translator = Agent(
         meaning and cultural sensitivity",
     backstory=TRANSLATION_BACKSTORY,
     tools=[TranslationTool()],
+    llm=gemini_llm,
     verbose=True,
 )
 
@@ -43,6 +54,7 @@ qna_generator = Agent(
         the symptoms to help narrow down diagnosis",
     backstory=QNA_BACKSTORY,
     tools=[QuestionGenerationTool()],
+    llm=gemini_llm,
     verbose=True,
 )
 
@@ -52,6 +64,7 @@ medication = Agent(
         comprehensive safety guidelines",
     backstory=RECOMMENDATION_BACKSTORY,
     tools=[MedicationTool()],
+    llm=gemini_llm,
     verbose=True,
 )
 
@@ -60,6 +73,7 @@ prescription_specialist = Agent(
     goal="Generate prescriptions and coordinate human review via Gmail MCP server",
     backstory=PRESCRIPTION_BACKSTORY.format(format=PRESCRIPTION_TEMPLATE),
     tools=[PrescriptionTool(), GMailMCPSendTool(), GMailMCPReadTool()],
+    llm=gemini_llm,
     verbose=True,
     max_retries=2,
 )

@@ -26,12 +26,15 @@ class MCPWorkflowManager:
 
     async def initialise(self) -> None:
         """Initialise MCP connection."""
-        try:
+        logger.info(
+            "MCP workflow manager ready (connection deferred until prescription step)"
+        )
+
+    async def _ensure_connected(self) -> None:
+        """Connect to Gmail MCP server on first use."""
+
+        if not self.client.connected:
             await self.client.connect()
-            logger.info("MCP workflow manager initialized")
-        except Exception as e:
-            logger.error("Failed to initialize MCP workflow manager: %s", e)
-            raise
 
     async def send_for_review(self, prescription_data: Dict[str, Any]) -> str:
         """Send prescription for review via Gmail MCP."""
@@ -41,7 +44,8 @@ class MCPWorkflowManager:
 
         try:
             body = self._build_review_email_body(prescription_data)
-            result = await self.client.send_email(
+            await self._ensure_connected()
+            result = self.client.send_email(
                 to_email=settings.doc_email,
                 subject=f"Prescription Review #{review_id}",
                 body=body,

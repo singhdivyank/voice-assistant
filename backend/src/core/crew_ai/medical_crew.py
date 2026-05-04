@@ -14,7 +14,8 @@ from src.core.crew_ai.medical_agents import (
     prescription_specialist,
 )
 from src.core.crew_ai.workflows import MCPWorkflowManager, SessionWorkflowManager
-from src.utils.consts import MESSAGES
+from src.services.speech import SpeechService
+from src.utils.consts import MESSAGES, Language
 from src.utils.exceptions import DocJarvisError
 from src.utils.helpers import (
     _extract_doctor_response,
@@ -70,31 +71,22 @@ class MedicalCrew:
 
         try:
             await self.mcp_manager.initialise()
-            self._initialised = True
-            logger.info("Medical Assistant Crew initialised successfully")
         except Exception as e:
-            logger.error("Failed to initialize Medical Assistant Crew: %s", str(e))
-            raise DocJarvisError(f"Crew initialization failed: {str(e)}") from e
+            logger.error(
+                "MCP workflow manager init skipped: %s — will retry at prescription step",
+                e,
+            )
+            self._initialised = True
 
     async def generate_welcome_audio(self, language: str = "en") -> Dict[str, Any]:
         """Generate welcome message audio"""
 
-        welcome_message = MESSAGES["intro"] + MESSAGES["instruction"]
-        welcome_task = Task(
-            description=INTRO_TASK_DESCRIPTION.format(
-                language=language,
-                welcome_message=welcome_message,
-            ),
-            expected_output="Base64 encoded audio of welcome message",
-            agent=self.agents["speech_agent"],
-        )
-        crew = Crew(
-            agents=[self.agents["speech_agent"]], tasks=[welcome_task], verbose=True
-        )
+        welcome_message = MESSAGES["intro"] + " " + MESSAGES["instruction"]
 
         try:
-            result = crew.kickoff()
-            audio_base64 = _extract_audio(str(result))
+            lang = Language.from_code(language)
+            speech = SpeechService(language=lang)
+            audio_base64 = await speech.synthesize_base64(welcome_message)
             logger.info("Welcome audio generated successfully")
             return {
                 "status": "success",
@@ -137,7 +129,7 @@ class MedicalCrew:
                         or "From audio transcription",
                     ),
                     expected_output="Accurate English translation of patient complaint",
-                    agent=self.agents["translation_agent"],
+                    agent=self.agents["translator"],
                     context=tasks if tasks else None,
                 )
                 tasks.append(translation_task)
@@ -158,10 +150,13 @@ class MedicalCrew:
 
             # Execute workflow
             crew = Crew(
-                agents=list(self.agents.values()),
+                agents=[
+                    self.agents["speech_processor"],
+                    self.agents["translator"],
+                    self.agents["interviewer"],
+                ],
                 tasks=tasks,
                 verbose=True,
-                planning=True,
             )
             result = crew.kickoff()
 
@@ -180,7 +175,7 @@ class MedicalCrew:
             )
 
             logger.info(
-                "Generated %d questions for session %d",
+                "Generated %d questions for session %s",
                 len(questions_english),
                 session_state.session_id,
             )
@@ -282,7 +277,6 @@ class MedicalCrew:
                 agents=[self.agents["diagnostician"], self.agents["pharmacist"]],
                 tasks=[diagnosis_task, medication_task],
                 verbose=True,
-                planning=True,
             )
             result = crew.kickoff()
 
@@ -315,36 +309,36 @@ class MedicalCrew:
                 f"Medication recommendation generation failed: {str(e)}"
             ) from e
 
-    async def generate_recommendations_audio(
-        self, recommendations: str, language: str = "en"
-    ) -> Dict[str, Any]:
-        """Step 8: convert recommendations to audio for patient"""
+    # async def generate_recommendations_audio(
+    #     self, recommendations: str, language: str = "en"
+    # ) -> Dict[str, Any]:
+    #     """Step 8: convert recommendations to audio for patient"""
 
-        try:
-            task = Task(
-                description=RECOMMENDATIONS_TASK_DESCRIPTION.format(
-                    lang=language,
-                    recommendations=recommendations,
-                ),
-                expected_output="High-quality audio file of spoken recommendations",
-                agent=self.agents["speech_processor"],
-            )
+    #     try:
+    #         task = Task(
+    #             description=RECOMMENDATIONS_TASK_DESCRIPTION.format(
+    #                 lang=language,
+    #                 recommendations=recommendations,
+    #             ),
+    #             expected_output="High-quality audio file of spoken recommendations",
+    #             agent=self.agents["speech_processor"],
+    #         )
 
-            crew = Crew(
-                agents=[self.agents["speech_processor"]], tasks=[task], verbose=True
-            )
-            result = crew.kickoff()
+    #         crew = Crew(
+    #             agents=[self.agents["speech_processor"]], tasks=[task], verbose=True
+    #         )
+    #         result = crew.kickoff()
 
-            audio_b64 = _extract_audio(str(result))
-            logger.info("Recommendations audio generated successfully")
-            return {
-                "status": "success",
-                "audio_base64": audio_b64,
-                "step": "audio_recommendations_generated",
-            }
-        except Exception as e:
-            logger.error("Failed to generate recommendations audio: %s", str(e))
-            raise DocJarvisError(f"Audio generation failed: {str(e)}") from e
+    #         audio_b64 = _extract_audio(str(result))
+    #         logger.info("Recommendations audio generated successfully")
+    #         return {
+    #             "status": "success",
+    #             "audio_base64": audio_b64,
+    #             "step": "audio_recommendations_generated",
+    #         }
+    #     except Exception as e:
+    #         logger.error("Failed to generate recommendations audio: %s", str(e))
+    #         raise DocJarvisError(f"Audio generation failed: {str(e)}") from e
 
     async def generate_and_review_prescriptions(
         self, session_state: SessionState, recommendations: str

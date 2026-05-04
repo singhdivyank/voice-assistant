@@ -23,11 +23,14 @@ class GMailMCPClient:
         """Connect to Gmail MCP server"""
 
         try:
-            import mcp_client
+            from mcp import Client
 
-            self.client = await mcp_client.connect(self.mcp_endpoint)
+            self.client = Client(base_url=self.mcp_endpoint)
             self.connected = True
             logger.info("Connected to GMail MCP server")
+        except ImportError:
+            logger.warning("mcp package not installed — Gmail MCP unavailable")
+            raise
         except Exception:
             logger.error("Failed to connect to server")
             raise

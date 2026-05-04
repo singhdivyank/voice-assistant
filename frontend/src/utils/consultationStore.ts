@@ -1,14 +1,15 @@
 /**
  * Zustand store — V2 CrewAI multi-agent + Gmail MCP workflow
  *
- * Workflow steps (mirrors backend WorkflowStep enum):
- *   1. generateWelcomeAudio
- *   2-4. processInitialSymptom  → questions[]
- *   5-6. answerQuestion (repeated until all_questions_answered)
- *   7. generateRecommendations
- *   8. generateRecommendationsAudio
- *   9-10. generateAndReviewPrescription  → review_id (MCP sends email to doctor)
- *   MCP. processDoctorResponse (APPROVE / MODIFY / REJECT)
+ * Audio: browser Web Speech Synthesis only — no server TTS calls.
+ *
+ * Workflow:
+ *   1. startVoiceConsultation  — set phase
+ *   2-4. processInitialSymptom → questions[] → speak Q1 (browser)
+ *   5-6. submitAnswer (repeated) → speak next question (browser)
+ *   7. generateRecommendations (background) → speak recommendations (browser)
+ *   9-10. sendPrescriptionForReview → Gmail MCP
+ *   MCP. submitDoctorResponse
  */
 
 import { create } from 'zustand';
@@ -23,21 +24,21 @@ import type {
   PatientFormData,
   WorkflowStep,
 } from '@/utils/';
-import { v2Client, playBase64Audio } from '@/api/client';
+import { v2Client, stopCurrentAudio, playBase64Audio } from '@/api/client';
 
 interface ConsultationState {
   sessionId: string | null;
   workflowStep: WorkflowStep;
   patientData: PatientFormData;
   phase: ConsultationPhase;
-  questions: string[];                 // patient-language questions
-  questionsEnglish: string[];          // english originals (for reference)
+  questions: string[];
+  questionsEnglish: string[];
   conversationHistory: ConversationTurn[];
   currentQuestion: string | null;
   currentQuestionIndex: number;
   totalQuestions: number;
   medicationRecommendations: string;
-  medicationEnglish: string;           // English version for non-EN sessions
+  medicationEnglish: string;
   diagnosisInfo: {
     symptom_analysis: string;
     differential_diagnosis: string;
@@ -45,38 +46,20 @@ interface ConsultationState {
   } | null;
   mcpReview: MCPReviewState;
   prescriptionContent: string | null;
-  isLoading: boolean;                  // initial session creation
-  isProcessingAudio: boolean;          // STT in progress
-  isProcessing: boolean;               // any crew agent working
-  isSpeaking: boolean;                 // TTS playback in progress
-  isComplete: boolean;                 // consultation fully done
+  isLoading: boolean;
+  isProcessingAudio: boolean;
+  isProcessing: boolean;
+  isSpeaking: boolean;
+  isComplete: boolean;
   error: string | null;
   setPatientData: (data: Partial<PatientFormData>) => void;
-
-  /** Step 1: welcome audio + create V2 session via process-initial-symptom */
   startVoiceConsultation: () => Promise<void>;
-
-  /** Steps 2-4: send audio or text complaint → receive questions */
   processInitialSymptom: (audioBlob?: Blob, textComplaint?: string) => Promise<void>;
-
-  /** Steps 5-6: answer one Q&A question */
   submitAnswer: (answer: string) => Promise<void>;
-
-  /** Step 7+8: generate recommendations text then TTS */
   generateRecommendations: () => Promise<void>;
-
-  /**
-   * Steps 9-10: generate prescription + send to doctor via Gmail MCP.
-   * Moves phase to 'prescription-review'.
-   */
   sendPrescriptionForReview: () => Promise<void>;
-
-  /**
-   * MCP: submit the doctor's email reply.
-   * Called from the PrescriptionReview UI with pasted email content.
-   */
   submitDoctorResponse: (emailContent: string) => Promise<void>;
-
+  stopAudio: () => void;
   reset: () => void;
   setError: (error: string | null) => void;
   setSpeaking: (speaking: boolean) => void;
@@ -127,262 +110,277 @@ const initialState = {
 export const useConsultationStore = create<ConsultationState>()(
   devtools(
     persist(
-      (set, get) => ({
-        ...initialState,
+      (set, get) => {
 
-        setPatientData: (data) =>
-          set((state) => ({ patientData: { ...state.patientData, ...data } })),
+      // ── Browser TTS helper ──────────────────────────────────────────────
+      // Speaks text immediately using Web Speech Synthesis.
+      // Synchronous kick-off — no await, no server call.
+      const speakText = (text: string): void => {
+        const lang = get().patientData.language;
 
-        setError: (error) => set({ error }),
+        // For non-English, backend gTTS gives guaranteed multilingual support.
+        // Browser TTS is used for English only where it's universally reliable.
+        if (lang !== 'en') {
+          set({ isSpeaking: true });  // ← move this INSIDE the if block, BEFORE the void call
+          void v2Client.generateRecommendationsAudio(text, lang)
+            .then(r => { if (r.audio_base64) return playBase64Audio(r.audio_base64); })
+            .catch(() => null)
+            .finally(() => set({ isSpeaking: false }));
+          return;
+        }
 
-        setSpeaking: (isSpeaking) => set({ isSpeaking }),
+        // English — use browser TTS instantly
+        if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = 'en-US';
+          utterance.rate = 0.9;
+          utterance.onstart = () => set({ isSpeaking: true });
+          utterance.onend   = () => set({ isSpeaking: false });
+          utterance.onerror = () => set({ isSpeaking: false });
+          window.speechSynthesis.speak(utterance);
+        };
 
-        startVoiceConsultation: async () => {
-          set({ isLoading: true, error: null });
-          try {
-            // Play welcome audio (best-effort — don't block on failure)
-            try {
-              const welcome = await v2Client.generateWelcomeAudio(
-                get().patientData.language
-              );
-              if (welcome.audio_base64) {
-                set({ isSpeaking: true });
-                await playBase64Audio(welcome.audio_base64).catch(() => null);
-                set({ isSpeaking: false });
-              }
-            } catch {
-              // Welcome audio is optional — continue even if it fails
+        return {
+          ...initialState,
+
+          setPatientData: (data) =>
+            set((state) => ({ patientData: { ...state.patientData, ...data } })),
+
+          setError: (error) => set({ error }),
+
+          setSpeaking: (isSpeaking) => set({ isSpeaking }),
+
+          stopAudio: () => {
+            if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+              window.speechSynthesis.cancel();
             }
+            stopCurrentAudio();
+            set({ isSpeaking: false });
+          },
 
-            set({
-              isLoading: false,
-              phase: 'voice-consultation',
-              workflowStep: 'initial_symptom',
-            });
-          } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to start consultation';
-            set({ error: message, isLoading: false });
-            throw err;
-          }
-        },
+          startVoiceConsultation: async () => {
+            set({ isLoading: true, error: null });
+            try {
+              set({
+                isLoading: false,
+                phase: 'voice-consultation',
+                workflowStep: 'initial_symptom',
+              });
+            } catch (err) {
+              const message = err instanceof Error ? err.message : 'Failed to start consultation';
+              set({ error: message, isLoading: false });
+              throw err;
+            }
+          },
 
-        // ── Steps 2-4: process initial symptom ────────────────────────────
+          processInitialSymptom: async (audioBlob?: Blob, textComplaint?: string) => {
+            const { patientData, sessionId } = get();
+            set({ isProcessingAudio: true, error: null });
 
-        processInitialSymptom: async (audioBlob?: Blob, textComplaint?: string) => {
-          const { patientData, sessionId } = get();
-          set({ isProcessingAudio: true, error: null });
+            try {
+              const result = await v2Client.processInitialSymptom({
+                sessionId: sessionId ?? undefined,
+                patientAge: patientData.age,
+                patientGender: patientData.gender,
+                language: patientData.language,
+                initialComplaint: textComplaint,
+                audioFile: audioBlob,
+              });
 
-          try {
-            const result = await v2Client.processInitialSymptom({
-              sessionId: sessionId ?? undefined,
-              patientAge: patientData.age,
-              patientGender: patientData.gender,
-              language: patientData.language,
-              initialComplaint: textComplaint,
-              audioFile: audioBlob,
-            });
+              const firstQuestion = result.questions[0] ?? null;
 
-            const firstQuestion = result.questions[0] ?? null;
+              set({
+                sessionId: result.session_id,
+                questions: result.questions,
+                questionsEnglish: result.questions_english,
+                currentQuestion: firstQuestion,
+                currentQuestionIndex: 0,
+                totalQuestions: result.questions.length,
+                workflowStep: 'questions_generated',
+                isProcessingAudio: false,
+                conversationHistory: result.transcribed_text
+                  ? [{ question: 'Please describe your main symptoms', answer: result.transcribed_text }]
+                  : [],
+              });
 
-            set({
-              sessionId: result.session_id,
-              questions: result.questions,
-              questionsEnglish: result.questions_english,
-              currentQuestion: firstQuestion,
-              currentQuestionIndex: 0,
-              totalQuestions: result.questions.length,
-              workflowStep: 'questions_generated',
-              isProcessingAudio: false,
-              // Seed conversation with the initial symptom turn
-              conversationHistory: result.transcribed_text
-                ? [{ question: 'Please describe your main symptoms', answer: result.transcribed_text }]
-                : [],
-            });
-          } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to process symptoms';
-            set({ error: message, isProcessingAudio: false });
-            throw err;
-          }
-        },
+              // Speak first question immediately via browser
+              if (firstQuestion) speakText(firstQuestion);
 
-        // ── Steps 5-6: answer a Q&A question ─────────────────────────────
+            } catch (err) {
+              const message = err instanceof Error ? err.message : 'Failed to process symptoms';
+              set({ error: message, isProcessingAudio: false });
+              throw err;
+            }
+          },
 
-        submitAnswer: async (answer: string) => {
-          const {
-            sessionId,
-            currentQuestion,
-            currentQuestionIndex,
-            conversationHistory,
-            questions,
-          } = get();
-
-          if (!sessionId || !currentQuestion) return;
-
-          set({ isProcessingAudio: true, error: null, workflowStep: 'qa_in_progress' });
-
-          try {
-            const result = await v2Client.answerQuestion(
+          submitAnswer: async (answer: string) => {
+            const {
               sessionId,
+              currentQuestion,
               currentQuestionIndex,
-              answer
-            );
+              conversationHistory,
+              questions,
+            } = get();
 
-            const newTurn: ConversationTurn = {
-              question: currentQuestion,
-              answer,
-            };
-            const updatedHistory = [...conversationHistory, newTurn];
+            if (!sessionId || !currentQuestion) return;
 
-            if (result.all_questions_answered) {
-              // All Q&A done — move to recommendations
-              set({
-                conversationHistory: updatedHistory,
-                currentQuestion: null,
-                workflowStep: 'qa_complete',
-                isProcessingAudio: false,
-              });
-              // Automatically kick off recommendations
-              await get().generateRecommendations();
-            } else {
-              // Advance to next question
-              const nextIndex = currentQuestionIndex + 1;
-              const nextQuestion = questions[nextIndex] ?? null;
-              set({
-                conversationHistory: updatedHistory,
-                currentQuestion: nextQuestion,
-                currentQuestionIndex: nextIndex,
-                workflowStep: 'qa_in_progress',
-                isProcessingAudio: false,
-              });
-            }
-          } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to submit answer';
-            set({ error: message, isProcessingAudio: false });
-            throw err;
-          }
-        },
+            set({ isProcessingAudio: true, error: null, workflowStep: 'qa_in_progress' });
 
-        // ── Step 7+8: recommendations ─────────────────────────────────────
-
-        generateRecommendations: async () => {
-          const { sessionId, patientData } = get();
-          if (!sessionId) return;
-
-          set({ isProcessing: true, error: null, workflowStep: 'recommendations_generated' });
-
-          try {
-            // Step 7 — CrewAI diagnosis + pharmacist agents
-            const recResult = await v2Client.generateRecommendations(sessionId);
-
-            set({
-              medicationRecommendations: recResult.recommendations,
-              medicationEnglish: recResult.recommendations_english,
-              diagnosisInfo: recResult.diagnosis,
-            });
-
-            // Step 8 — TTS of recommendations (best-effort)
             try {
-              const audioResult = await v2Client.generateRecommendationsAudio(
-                recResult.recommendations,
-                patientData.language
+              const result = await v2Client.answerQuestion(
+                sessionId,
+                currentQuestionIndex,
+                answer
               );
-              if (audioResult.audio_base64) {
-                set({ isSpeaking: true, workflowStep: 'audio_generated' });
-                await playBase64Audio(audioResult.audio_base64).catch(() => null);
-                set({ isSpeaking: false });
+
+              const newTurn: ConversationTurn = {
+                question: currentQuestion,
+                answer,
+              };
+              const updatedHistory = [...conversationHistory, newTurn];
+
+              if (result.all_questions_answered) {
+                set({
+                  conversationHistory: updatedHistory,
+                  currentQuestion: null,
+                  workflowStep: 'qa_complete',
+                  isProcessingAudio: false,
+                });
+                // Run recommendations in background — UI stays responsive
+                void get().generateRecommendations();
+              } else {
+                const nextIndex = currentQuestionIndex + 1;
+                const nextQuestion = questions[nextIndex] ?? null;
+                set({
+                  conversationHistory: updatedHistory,
+                  currentQuestion: nextQuestion,
+                  currentQuestionIndex: nextIndex,
+                  workflowStep: 'qa_in_progress',
+                  isProcessingAudio: false,
+                });
+                // Speak next question immediately via browser
+                if (nextQuestion) speakText(nextQuestion);
               }
-            } catch {
-              // TTS failure is non-fatal
+            } catch (err) {
+              const message = err instanceof Error ? err.message : 'Failed to submit answer';
+              set({ error: message, isProcessingAudio: false });
+              throw err;
+            }
+          },
+
+          generateRecommendations: async () => {
+            const { sessionId } = get();
+            if (!sessionId) return;
+
+            set({ isProcessing: true, error: null, workflowStep: 'recommendations_generated' });
+
+            try {
+              const recResult = await v2Client.generateRecommendations(sessionId);
+
+              set({
+                medicationRecommendations: recResult.recommendations,
+                medicationEnglish: recResult.recommendations_english,
+                diagnosisInfo: recResult.diagnosis,
+                isProcessing: false,
+                workflowStep: 'audio_generated',
+              });
+
+              // Speak recommendations via browser TTS
+              if (recResult.recommendations) {
+                speakText(recResult.recommendations);
+              }
+
+            } catch (err) {
+              const message = err instanceof Error ? err.message : 'Failed to generate recommendations';
+              set({ error: message, isProcessing: false });
+              throw err;
+            }
+          },
+
+          sendPrescriptionForReview: async () => {
+            const { sessionId, medicationRecommendations } = get();
+            if (!sessionId || !medicationRecommendations) {
+              set({ error: 'No session or recommendations available for prescription' });
+              return;
             }
 
-            set({ isProcessing: false });
-          } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to generate recommendations';
-            set({ error: message, isProcessing: false });
-            throw err;
-          }
-        },
+            set({ isProcessing: true, error: null });
 
-        // ── Steps 9-10: prescription + MCP ───────────────────────────────
+            try {
+              const result = await v2Client.generateAndReviewPrescription(
+                sessionId,
+                medicationRecommendations
+              );
 
-        sendPrescriptionForReview: async () => {
-          const { sessionId, medicationRecommendations } = get();
-          if (!sessionId || !medicationRecommendations) {
-            set({ error: 'No session or recommendations available for prescription' });
-            return;
-          }
+              set({
+                workflowStep: 'prescription_sent',
+                phase: 'prescription-review' as ConsultationPhase,
+                isProcessing: false,
+                mcpReview: {
+                  reviewId: result.review_id,
+                  doctorEmail: result.doctor_email,
+                  estimatedMinutes: result.estimated_review_time,
+                  action: null,
+                  modifications: null,
+                  rejectionReason: null,
+                  sentAt: new Date().toISOString(),
+                },
+              });
+            } catch (err) {
+              const message = err instanceof Error ? err.message : 'Failed to send prescription for review';
+              set({ error: message, isProcessing: false });
+              throw err;
+            }
+          },
 
-          set({ isProcessing: true, error: null });
+          submitDoctorResponse: async (emailContent: string) => {
+            const { mcpReview } = get();
+            if (!mcpReview.reviewId) {
+              set({ error: 'No active prescription review found' });
+              return;
+            }
 
-          try {
-            const result = await v2Client.generateAndReviewPrescription(
-              sessionId,
-              medicationRecommendations
-            );
+            set({ isProcessing: true, error: null });
 
-            set({
-              workflowStep: 'prescription_sent',
-              phase: 'prescription-review',
-              isProcessing: false,
-              mcpReview: {
-                reviewId: result.review_id,
-                doctorEmail: result.doctor_email,
-                estimatedMinutes: result.estimated_review_time,
-                action: null,
-                modifications: null,
-                rejectionReason: null,
-                sentAt: new Date().toISOString(),
-              },
-            });
-          } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to send prescription for review';
-            set({ error: message, isProcessing: false });
-            throw err;
-          }
-        },
+            try {
+              const result = await v2Client.processDoctorResponse(
+                mcpReview.reviewId,
+                emailContent
+              );
 
-        // ── MCP: process doctor response ──────────────────────────────────
+              const action: DoctorAction = result.doctor_action;
 
-        submitDoctorResponse: async (emailContent: string) => {
-          const { mcpReview } = get();
-          if (!mcpReview.reviewId) {
-            set({ error: 'No active prescription review found' });
-            return;
-          }
+              set({
+                workflowStep: 'completed',
+                isComplete: action === 'APPROVED' || action === 'MODIFIED',
+                isProcessing: false,
+                mcpReview: {
+                  ...get().mcpReview,
+                  action,
+                  modifications: result.modifications,
+                  rejectionReason: result.rejection_reason,
+                },
+              });
+            } catch (err) {
+              const message = err instanceof Error ? err.message : 'Failed to process doctor response';
+              set({ error: message, isProcessing: false });
+              throw err;
+            }
+          },
 
-          set({ isProcessing: true, error: null });
-
-          try {
-            const result = await v2Client.processDoctorResponse(
-              mcpReview.reviewId,
-              emailContent
-            );
-
-            const action: DoctorAction = result.doctor_action;
-
-            set({
-              workflowStep: 'completed',
-              isComplete: action === 'APPROVED' || action === 'MODIFIED',
-              isProcessing: false,
-              mcpReview: {
-                ...get().mcpReview,
-                action,
-                modifications: result.modifications,
-                rejectionReason: result.rejection_reason,
-              },
-            });
-          } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to process doctor response';
-            set({ error: message, isProcessing: false });
-            throw err;
-          }
-        },
-        reset: () => set({ ...initialState, patientData: get().patientData }),
-      }),
+          reset: () => {
+            if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+              window.speechSynthesis.cancel();
+            }
+            stopCurrentAudio();
+            set({ ...initialState, patientData: get().patientData });
+          },
+        };
+      },
 
       {
         name: 'consultation-storage-v2',
-        // Only persist patient preferences — session state is ephemeral
         partialize: (state) => ({
           patientData: state.patientData,
         }),
