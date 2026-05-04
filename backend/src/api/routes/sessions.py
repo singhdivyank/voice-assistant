@@ -48,8 +48,8 @@ async def create_session(
 
     with telemetry.span("api_create_session", {"session_id": session_id}):
         patient = PatientInfo(
-            name=request.name,
-            email=request.email,
+            name=request.patient_name,
+            email=request.patient_email,
             age=request.patient_age,
             gender=Gender.from_string(request.patient_gender),
         )
@@ -79,6 +79,8 @@ async def create_session(
             session_id=session_id,
             created_at=store.get_created_at(session_id=session_id),
             status=session.status,
+            patient_name=session.patient.name,
+            patient_email=session.patient.email,
             patient_age=session.patient.age,
             patient_gender=session.patient.gender.value,
             language=request.language,
@@ -253,6 +255,8 @@ async def get_session(
     return SessionState(
         session_id=session.session_id,
         status=session.status,
+        patient_name=session.patient.name,
+        patient_email=session.patient.email,
         patient_age=session.patient.age,
         patient_gender=session.patient.gender.value,
         language=lang_code,

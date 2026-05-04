@@ -111,7 +111,7 @@ class RedisSessionStore(SessionStore):
         result = await client.delete(key, ts_key)
         return result > 0
 
-    def get_created_at(self) -> datetime:
+    def get_created_at(self, session_id: str) -> datetime:
         """Get session creation time"""
         return datetime.now()
 
