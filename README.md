@@ -31,7 +31,7 @@ docjarvis/
 │   │   │   ├── __init__.py
 │   │   │   ├── monitoring.py
 │   │   │   ├── settings.py
-│   │   ├── core/                
+│   │   ├── core/
 │   │   │   ├── __init__.py
 │   │   │   ├── diagnosis.py
 │   │   │   ├── llm_manager.py
@@ -47,6 +47,7 @@ docjarvis/
 │   │   │   │   │   ├── mcp_workflow.py
 │   │   │   │   │   └── session_workflow.py
 │   │   │   │   ├── __init__.py
+│   │   │   │   ├── constants.py
 │   │   │   │   ├── medical_agents.py
 │   │   │   │   └── medical_crew.py
 │   │   ├── monitoring/
@@ -55,9 +56,9 @@ docjarvis/
 │   │   │   ├── dashboard.py
 │   │   │   ├── load_balancer.py
 │   │   │   ├── performance_monitor.py
-│   │   ├── services/      
+│   │   ├── services/
 │   │   │   ├── __init__.py
-│   │   │   ├── session_store.py      
+│   │   │   ├── session_store.py
 │   │   │   ├── speech.py
 │   │   │   ├── translation.py
 │   │   ├── utils/
@@ -71,7 +72,19 @@ docjarvis/
 │   ├── tests/
 │   │   ├── conftest.py
 │   │   ├── integration/
+│   │   │   ├── test_monitoring_health.py
+│   │   │   ├── test_session_lifecycle.py
+│   │   │   ├── test_sessions_api.py
+│   │   │   └── test_workflow_routes.py
 │   │   └── unit/
+│   │   │   ├── test_cache_manager.py
+│   │   │   ├── test_consts.py
+│   │   │   ├── test_diagnosis.py
+│   │   │   ├── test_helpers.py
+│   │   │   ├── test_mcp_workflow.py
+│   │   │   ├── test_monitoring.py
+│   │   │   ├── test_session_store.py
+│   │   │   └── test_session_workflow.py
 │   ├── pyproject.toml
 │   ├── requirements.txt
 │   └── Dockerfile
@@ -135,6 +148,7 @@ docjarvis/
 │       └── deploy.yml
 ├── .gitignore
 ├── .pylintrc
+├── Pytest.ini
 ├── docker-compose.yml
 ├── otel-config.yml
 ├── package.json
