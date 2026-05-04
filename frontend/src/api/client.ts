@@ -24,6 +24,16 @@ import type {
   V2SessionStatus,
 } from '@/utils/';
 
+let _currentAudio: HTMLAudioElement | null = null;
+
+export function stopCurrentAudio(): void {
+  if (_currentAudio) {
+    _currentAudio.pause();
+    _currentAudio.currentTime = 0;
+    _currentAudio = null;
+  }
+}
+
 async function request<T>(
   url: string,
   options: RequestInit = {}
@@ -225,6 +235,9 @@ class V2ApiClient {
 export function playBase64Audio(base64Audio: string): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
+      // stop any previously playing audio
+      stopCurrentAudio();
+
       const byteCharacters = atob(base64Audio);
       const byteArray = new Uint8Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
@@ -233,8 +246,18 @@ export function playBase64Audio(base64Audio: string): Promise<void> {
       const blob = new Blob([byteArray], { type: 'audio/mp3' });
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
-      audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
-      audio.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Audio playback failed')); };
+      _currentAudio = audio;
+
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        _currentAudio = null;
+        resolve();
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        _currentAudio = null;
+        reject(new Error('Audio playback failed'));
+      };
       audio.play();
     } catch (err) {
       reject(err);
