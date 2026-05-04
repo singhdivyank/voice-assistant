@@ -14,7 +14,7 @@ from src.utils.consts import Language, DIAGNOSIS_PROMPT, MEDICATION_PROMPT
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-_diagnosis_engine = Optional[DiagnosisEngine] = None
+_diagnosis_engine: Optional[DiagnosisEngine] = None
 
 
 def get_diagnosis_engine() -> DiagnosisEngine:

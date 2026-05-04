@@ -36,7 +36,7 @@ router = APIRouter()
 settings = get_settings()
 
 file_handler = FileHandler()
-_diagnosis_service = Optional[DiagnosisService] = None
+_diagnosis_service: Optional[DiagnosisService] = None
 
 
 def get_diagnosis_service() -> DiagnosisService:
