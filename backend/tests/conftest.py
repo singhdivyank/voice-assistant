@@ -183,51 +183,51 @@ def mock_speech_service():
     return svc
 
 
-# # FastAPI TestClient
-# @pytest.fixture()
-# def client(mock_store, mock_diagnosis_service):
-#     """
-#     Sync TestClient with session store and diagnosis service both mocked.
-#     Patches are applied at the dependency-injection and module level so the
-#     actual LLM / Redis / speech APIs are never touched.
-#     """
-#     from src.api.main import app
-#     from src.services.session_store import get_session_store
+# FastAPI TestClient
+@pytest.fixture()
+def client(mock_store, mock_diagnosis_service):
+    """
+    Sync TestClient with session store and diagnosis service both mocked.
+    Patches are applied at the dependency-injection and module level so the
+    actual LLM / Redis / speech APIs are never touched.
+    """
+    from src.api.main import app
+    from src.services.session_store import get_session_store
 
-#     app.dependency_overrides[get_session_store] = lambda: mock_store
+    app.dependency_overrides[get_session_store] = lambda: mock_store
 
-#     with (
-#         patch(
-#             "src.api.routes.sessions.diagnosis_service",
-#             return_value=mock_diagnosis_service,
-#         ),
-#         patch("src.core.crew_ai.medical_crew.MedicalCrew", MagicMock()),
-#     ):
-#         with TestClient(app, raise_server_exceptions=True) as c:
-#             yield c
+    with (
+        patch(
+            "src.api.routes.sessions.diagnosis_service",
+            return_value=mock_diagnosis_service,
+        ),
+        patch("src.core.crew_ai.medical_crew.MedicalCrew", MagicMock()),
+    ):
+        with TestClient(app, raise_server_exceptions=True) as c:
+            yield c
 
-#     app.dependency_overrides.clear()
+    app.dependency_overrides.clear()
 
 
-# @pytest_asyncio.fixture()
-# async def async_client(mock_store, mock_diagnosis_service):
-#     """Async HTTPX client for endpoints that need async assertions."""
-#     from src.api.main import app
-#     from src.services.session_store import get_session_store
+@pytest_asyncio.fixture()
+async def async_client(mock_store, mock_diagnosis_service):
+    """Async HTTPX client for endpoints that need async assertions."""
+    from src.api.main import app
+    from src.services.session_store import get_session_store
 
-#     app.dependency_overrides[get_session_store] = lambda: mock_store
+    app.dependency_overrides[get_session_store] = lambda: mock_store
 
-#     with (
-#         patch(
-#             "src.api.routes.sessions.diagnosis_service",
-#             return_value=mock_diagnosis_service,
-#         ),
-#         patch("src.core.crew_ai.medical_crew.MedicalCrew", MagicMock()),
-#     ):
-#         async with AsyncClient(app=app, base_url="http://test") as ac:
-#             yield ac
+    with (
+        patch(
+            "src.api.routes.sessions.diagnosis_service",
+            return_value=mock_diagnosis_service,
+        ),
+        patch("src.core.crew_ai.medical_crew.MedicalCrew", MagicMock()),
+    ):
+        async with AsyncClient(app=app, base_url="http://test") as ac:
+            yield ac
 
-#     app.dependency_overrides.clear()
+    app.dependency_overrides.clear()
 
 
 # Private helpers
