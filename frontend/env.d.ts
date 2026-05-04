@@ -14,3 +14,8 @@ declare module 'react-mic-recorder' {
   }
   export class ReactMic extends Component<ReactMicProps> {}
 }
+
+declare module "*.css" {
+  const content: { [className: string]: string };
+  export default content;
+}

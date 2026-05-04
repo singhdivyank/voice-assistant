@@ -4,7 +4,6 @@ import logging
 import re
 from typing import AsyncIterator
 
-import google.genai as genai
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
 from langchain_core.tracers.langchain import LangChainTracer
 from langchain_core.prompts.chat import ChatPromptTemplate
@@ -28,13 +27,8 @@ class DiagnosisEngine:
 
     def __init__(self):
         self.settings = get_settings()
-        self.configure_api()
         self.create_llm()
         self.create_prompts()
-
-    def configure_api(self) -> None:
-        """Configure the Google Generative AI API"""
-        genai.configure(api_key=self.settings.google_api_key)
 
     def create_llm(self) -> None:
         """Create LLM instance with LangSmith tracing"""
@@ -162,7 +156,7 @@ class DiagnosisEngine:
 
         if not isinstance(response, str):
             logger.error(
-                "Expected string response, got %s:%s", type(response), {response}
+                "Expected string response, got %s:%s", type(response), response
             )
             return ["Please describe your main symptoms"]
 

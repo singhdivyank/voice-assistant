@@ -421,6 +421,24 @@ export interface V2SessionStatus {
   };
 }
 
+export interface ISpeechRecognition {
+  continuous: boolean;
+  lang: string;
+  interimResults: boolean;
+  onstart: (() => void) | null;
+  onresult: ((event: SpeechRecognitionResultListEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+ 
+export interface SpeechRecognitionResultListEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
 /** V2 MCP review state tracked in the store */
 export interface MCPReviewState {
   reviewId: string | null;

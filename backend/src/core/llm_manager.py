@@ -3,7 +3,6 @@
 import logging
 from typing import Any, AsyncIterator, Dict, Optional
 
-import google.genai
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.tracers.langchain import LangChainTracer
 
@@ -25,7 +24,6 @@ class LLMManager(Singleton):
         if self._initialized:
             return
 
-        self.configure_api()
         self.create_llm()
         self._initialized = True
         logger.info("LLM Manager initialized")
@@ -40,10 +38,6 @@ class LLMManager(Singleton):
             "convert_system_message_to_human": True,
             "callbacks": callbacks if callbacks else None,
         }
-
-    def configure_api(self):
-        """Configure the Google Generative AI API"""
-        google.genai.configure(api_key=settings.google_api_key)
 
     def create_llm(self) -> None:
         """Create LLM instance with monitoring"""
