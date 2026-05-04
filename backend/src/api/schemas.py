@@ -6,6 +6,20 @@ from pydantic import BaseModel, Field, field_validator
 from src.utils.consts import Gender, Language
 
 
+class ConversationTurnSchema(BaseModel):
+    """Schema for a single turn in the conversation"""
+
+    question: str
+    answer: str
+
+
+class SubmitAnswer(BaseModel):
+    """Schema for submitting an answer"""
+
+    question_index: int = Field(..., ge=0)
+    answer: str = Field(..., min_length=1, max_length=2000)
+
+
 class DiagnosisRequest(BaseModel):
     """Schema for diagnosis request"""
 
@@ -120,17 +134,3 @@ class SessionState(BaseModel):
     current_question_index: int
     medication: Optional[str] = None
     prescription_path: Optional[str] = None
-
-
-class ConversationTurnSchema(BaseModel):
-    """Schema for a single turn in the conversation"""
-
-    question: str
-    answer: str
-
-
-class SubmitAnswer(BaseModel):
-    """Schema for submitting an answer"""
-
-    question_index: int = Field(..., ge=0)
-    answer: str = Field(..., min_length=1, max_length=2000)

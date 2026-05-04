@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
 
-const httpsConfig = () => {
+const httpsConfig = () : { key: Buffer; cert: Buffer } | undefined => {
   const keyPath = path.resolve(__dirname, 'loaclhost-key.pem');
   const certPath = path.resolve(__dirname, 'localhost.pem');
   if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
