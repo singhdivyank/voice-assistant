@@ -45,7 +45,7 @@ class MCPWorkflowManager:
         try:
             body = self._build_review_email_body(prescription_data)
             await self._ensure_connected()
-            result = self.client.send_email(
+            result = await self.client.send_email(
                 to_email=settings.doc_email,
                 subject=f"Prescription Review #{review_id}",
                 body=body,
