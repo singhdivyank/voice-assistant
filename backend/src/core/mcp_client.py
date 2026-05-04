@@ -7,8 +7,6 @@ from typing import Any, List, Dict
 
 from src.config.settings import get_settings
 
-import mcp_client
-
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
@@ -25,6 +23,8 @@ class GMailMCPClient:
         """Connect to Gmail MCP server"""
 
         try:
+            import mcp_client
+
             self.client = await mcp_client.connect(self.mcp_endpoint)
             self.connected = True
             logger.info("Connected to GMail MCP server")

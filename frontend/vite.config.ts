@@ -3,6 +3,18 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
 
+const httpsConfig = () => {
+  const keyPath = path.resolve(__dirname, 'loaclhost-key.pem');
+  const certPath = path.resolve(__dirname, 'localhost.pem');
+  if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+    return {
+      key: fs.readFileSync(keyPath),
+      cert: fs.readFileSync(certPath),
+    };
+  }
+  return undefined;
+};
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -32,10 +44,7 @@ export default defineConfig({
   },
   preview: {
     port: 3000,
-    https: {
-      key: fs.readFileSync(path.resolve(__dirname, 'localhost-key.pem')),
-      cert: fs.readFileSync(path.resolve(__dirname, 'localhost.pem')),
-    },
+    https: httpsConfig(),
   },
   build: {
     outDir: 'dist',

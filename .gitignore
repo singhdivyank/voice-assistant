@@ -74,4 +74,7 @@ Thumbs.db
 node_modules/
 
 # ssl certificates
+frontend/localhost.pem
+frontend/localhost-key.pem
 *.pem
+*.key
