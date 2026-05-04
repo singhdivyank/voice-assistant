@@ -35,7 +35,7 @@ async def generate_welcome_audio(language: str = Form(default="en")):
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as error:
         logger.error("Unexpected error in welcome audio generation: %s", str(error))
-        raise HTTPException(status_code=500, detail="Internal Server Error") from e
+        raise HTTPException(status_code=500, detail="Internal Server Error") from error
 
 
 @router.post("/process-initial-symptom")
@@ -123,6 +123,8 @@ async def answer_question(
     except DocJarvisError as e:
         logger.error("Q&A processing failed: %s", str(e))
         raise HTTPException(status_code=400, detail=str(e)) from e
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Unexpected error in Q&A processing: %s", str(e))
         raise HTTPException(status_code=500, detail="Internal server error") from e
@@ -147,6 +149,8 @@ async def generate_recommendations(session_id: str):
     except DocJarvisError as e:
         logger.error("Recommendations generation failed: %s", str(e))
         raise HTTPException(status_code=400, detail=str(e)) from e
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Unexpected error in recommendations generation: %s", str(e))
         raise HTTPException(status_code=500, detail="Internal server error") from e
@@ -169,6 +173,8 @@ async def generate_recommendations_audio(
     except DocJarvisError as e:
         logger.error("Audio generation failed: %s", str(e))
         raise HTTPException(status_code=400, detail=str(e)) from e
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Unexpected error in audio generation: %s", str(e))
         raise HTTPException(status_code=500, detail="Internal server error") from e
@@ -196,6 +202,8 @@ async def gen_prescription(
     except DocJarvisError as e:
         logger.error("Prescription generation failed: %s", str(e))
         raise HTTPException(status_code=400, detail=str(e)) from e
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Unexpected error in prescription generation: %s", str(e))
         raise HTTPException(status_code=500, detail="Internal server error") from e
@@ -218,6 +226,8 @@ async def process_doctor_response(
     except DocJarvisError as e:
         logger.error("Doctor response processing failed: %s", str(e))
         raise HTTPException(status_code=400, detail=str(e)) from e
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Unexpected error in doctor response processing: %s", str(e))
         raise HTTPException(status_code=500, detail="Internal server error") from e
@@ -264,6 +274,8 @@ async def get_session_status(session_id: str):
                 },
             }
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Session status retrieval failed: %s", str(e))
         raise HTTPException(status_code=500, detail="Internal server error") from e
@@ -310,6 +322,8 @@ async def del_session(session_id: str):
         return JSONResponse(
             content={"message": f"Session {session_id} deleted successfully"}
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Session deletion failed: %s", str(e))
         raise HTTPException(status_code=500, detail="Internal server error") from e

@@ -49,6 +49,8 @@ async def generate_prescription(
                 prescription_path=str(file_path),
                 download_url=download_url,
             )
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error("Failed to generate prescription: %s", e)
             raise HTTPException(status_code=500, detail=str(e)) from e

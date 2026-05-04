@@ -200,10 +200,13 @@ async def transcribe_and_respond(
                     }
             else:
                 raise HTTPException(status_code=400, detail="Invalid question index")
-
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("STT processing failed: %s", e)
-        raise HTTPException(status_code=500, detail=f"STT processing failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"STT processing failed: {str(e)}"
+        ) from e
     finally:
         if temp_audio_path and temp_audio_path.exists():
             file_handler.safe_delete(temp_audio_path)

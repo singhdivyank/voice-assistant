@@ -35,6 +35,8 @@ async def generate_questions(request: DiagnosisRequest):
                 DiagnosisQuestion(index=idx, question=question)
                 for idx, question in enumerate(questions)
             ]
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error("Failed to generate questions: %s", e)
             raise HTTPException(status_code=500, detail=str(e)) from e
@@ -68,6 +70,8 @@ async def generate_questions_translated(
                 ],
                 "language": language,
             }
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error("Failed to generate translated questions: %s", e)
             raise HTTPException(status_code=500, detail=str(e)) from e
