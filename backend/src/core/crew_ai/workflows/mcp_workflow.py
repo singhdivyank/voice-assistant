@@ -60,7 +60,8 @@ class MCPWorkflowManager:
                 "prescription_data": prescription_data,
                 "sent_at": datetime.now(),
                 "doctor_email": settings.doc_email,
-                "message_id": result["message_id"],
+                # "message_id": result["message_id"],
+                "message_id": "demo-msg-001",
                 "status": "PENDING",
             }
 

@@ -41,6 +41,12 @@ dependencies = [
     "crewai[tools]==1.14.4",
     "mcp==1.26.0",
 
+    # Gmail API
+    "google-auth==2.50.0",
+    "google-auth-oauthlib==1.3.1",
+    "google-auth-httplib2==0.3.1",
+    "google-api-python-client==2.195.0",
+
     # Infrastructure & Utilities
     "psutil==7.2.2",
     "grpcio==1.80.0",

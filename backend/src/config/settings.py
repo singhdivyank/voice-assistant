@@ -70,7 +70,18 @@ class Settings(BaseSettings):
 
     # for Human-In-The-Loop
     doc_email: str = Field(default="", alias="DOCTOR_EMAIL")
-    mcp_server: str = Field(default="", alias="GMAIL_SERVER")
+    gmail_credentials: str = Field(
+        default="credentials.json", alias="GMAIL_CREDENTIALS_FILE"
+    )
+    gmail_tokens: str = Field(default="token.json", alias="GMAIL_TOKEN_FILE")
+    gmail_sender_email: str = Field(
+        default="your-name@example.com", alias="GMAIL_SENDER_EMAIL"
+    )
+    gmail_scopes: list[str] = [
+        "https://www.googleapis.com/auth/gmail.send",
+        "https://www.googleapis.com/auth/gmail.readonly",
+    ]
+    gmail_impersonated_user: str = "user@example.org"
 
     def setup_dir(self) -> None:
         """Create necessary dictionaries"""

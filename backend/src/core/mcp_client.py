@@ -1,9 +1,15 @@
-"""Model Context Protocol implementation"""
+"""Gmail client using Gmail API directly — no MCP protocol needed"""
 
+import os
+import base64
 import logging
-import uuid
-from datetime import datetime
+from email.mime.text import MIMEText
 from typing import Any, List, Dict
+
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
 
 from src.config.settings import get_settings
 
@@ -12,100 +18,133 @@ settings = get_settings()
 
 
 class GMailMCPClient:
-    """Client for GMail MCP server integration"""
+    """Gmail client — uses Gmail API directly."""
 
     def __init__(self):
-        # TODO- update once in production
-        self.mcp_endpoint = settings.mcp_server
         self.connected = False
+        self._service = None
+        self.get_configs()
+
+    def get_configs(self):
+        """Load Gmail API configurations from settings."""
+        self.credentials_file = settings.gmail_credentials
+        self.token_file = settings.gmail_tokens
+        self.sender_email = settings.gmail_sender_email
+        self.scopes = settings.gmail_scopes
+        self.impersonated_user = settings.gmail_impersonated_user
 
     async def connect(self):
-        """Connect to Gmail MCP server"""
-
+        """Authenticate with Gmail API."""
         try:
-            from mcp import Client
+            if self.connected:
+                return
 
-            self.client = Client(base_url=self.mcp_endpoint)
+            creds = None
+
+            if os.path.exists(self.token_file):
+                creds = Credentials.from_authorized_user_file(
+                    self.token_file, self.scopes
+                )
+
+            if not creds or not creds.valid:
+                if creds and creds.expired and creds.refresh_token:
+                    creds.refresh(Request())
+                else:
+                    flow = InstalledAppFlow.from_client_secrets_file(
+                        self.credentials_file, self.scopes
+                    )
+                    creds = flow.run_local_server(port=0)
+
+                with open(self.token_file, "w") as token:
+                    token.write(creds.to_json())
+
+            self._service = build("gmail", "v1", credentials=creds)
             self.connected = True
-            logger.info("Connected to GMail MCP server")
-        except ImportError:
-            logger.warning("mcp package not installed — Gmail MCP unavailable")
-            raise
-        except Exception:
-            logger.error("Failed to connect to server")
+            logger.info("Connected to Gmail API")
+        except Exception as e:
+            logger.error("Failed to connect to Gmail API: %s", e)
             raise
 
     async def send_email(
         self, to_email: str, subject: str, body: str
     ) -> Dict[str, Any]:
-        """send email via GMail MCP server"""
+        """Send email via Gmail API."""
+        if not self.connected:
+            await self.connect()
 
-        mcp_request = {
-            "method": "gmail/send",
-            "params": {
-                "to_email": to_email,
-                "subject": subject,
-                "body": body,
-                "format": "html",
-            },
+        message = MIMEText(body, "html")
+        message["to"] = to_email
+        message["subject"] = subject
+        message["from"] = self.sender_email
+
+        raw = base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")
+
+        result = (
+            self._service.users()
+            .messages()
+            .send(userId="me", body={"raw": raw})
+            .execute()
+        )
+
+        return {
+            "success": True,
+            "message_id": result["id"],
+            "timestamp": __import__("datetime").datetime.now().isoformat(),
         }
-
-        try:
-            await self.client.call(mcp_request)
-            message_id = f"msg_{uuid.uuid4().hex[:12]}"
-            return {
-                "success": True,
-                "message_id": message_id,
-                "timestamp": datetime.now().isoformat(),
-            }
-        except Exception as e:
-            logger.error("Gmail MCP send failed")
-            return {"success": False, "error": str(e)}
 
     async def read_emails(
         self, query: str, max_results: int = 10
     ) -> List[Dict[str, Any]]:
-        """Read emails via GMail MCP server"""
+        """Search and read emails via Gmail API."""
+        if not self.connected:
+            await self.connect()
 
-        mcp_request = {
-            "method": "gmail/search",
-            "params": {
-                "query": query,
-                "maxResults": max_results,
-                "includeSpamTrash": False,
-            },
-        }
+        results = (
+            self._service.users()
+            .messages()
+            .list(userId="me", q=query, maxResults=max_results)
+            .execute()
+        )
 
-        results = []
+        messages = results.get("messages", [])
+        emails = []
 
-        try:
-            result = await self.client.call(mcp_request)
-            results.append(result)
-        except Exception as e:
-            logger.error("GMail MCP read failed: %s", str(e))
-            return []
+        for msg in messages:
+            msg_data = (
+                self._service.users()
+                .messages()
+                .get(userId="me", id=msg["id"], format="full")
+                .execute()
+            )
 
-        return results
-
-    async def get_thread(self, thread_id: str) -> Dict[str, Any]:
-        """Get email thread via GMail MCP"""
-
-        mcp_request = {
-            "method": "gmail/thread/get",
-            "params": {"id": thread_id, "format": "full"},
-        }
-
-        try:
-            response = await self.client.call(mcp_request)
-
-            if not response:
-                return {}
-
-            thread_data = response.get("result", response)
-            return {
-                "thread_id": thread_data.get("id", thread_id),
-                "messages": thread_data.get("messages", []),
+            headers = {
+                h["name"]: h["value"] for h in msg_data["payload"].get("headers", [])
             }
-        except Exception as e:
-            logger.error("Gmail MCP get thread failed: %s", str(e))
-            return {}
+
+            body = ""
+            payload = msg_data.get("payload", {})
+            parts = payload.get("parts", [])
+            if parts:
+                for part in parts:
+                    if part["mimeType"] == "text/plain":
+                        data = part["body"].get("data", "")
+                        body = base64.urlsafe_b64decode(data).decode(
+                            "utf-8", errors="ignore"
+                        )
+                        break
+            elif payload.get("body", {}).get("data"):
+                body = base64.urlsafe_b64decode(payload["body"]["data"]).decode(
+                    "utf-8", errors="ignore"
+                )
+
+            emails.append(
+                {
+                    "id": msg["id"],
+                    "subject": headers.get("Subject", ""),
+                    "from": headers.get("From", ""),
+                    "date": headers.get("Date", ""),
+                    "body": body,
+                }
+            )
+
+        return emails

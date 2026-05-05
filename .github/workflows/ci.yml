@@ -29,6 +29,11 @@ jobs:
         run: |
           pylint backend/src || true
 
+      - name: Set up Gmail credentials
+        run: |
+          echo '${{ secrets.GMAIL_CREDENTIALS_JSON }}' > backend/credentials.json
+          echo '${{ secrets.GMAIL_TOKEN_JSON }}' > backend/token.json
+
       - name: Run tests with coverage
         run: |
           cd backend

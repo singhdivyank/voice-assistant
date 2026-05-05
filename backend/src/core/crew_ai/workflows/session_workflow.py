@@ -43,7 +43,8 @@ class SessionWorkflowManager:
                 "step_history": [],
                 "errors": [],
                 "metadata": {
-                    # TODO- add patient name
+                    "patient_name": session_state.patient_name,
+                    "patient_email": session_state.patient_email,
                     "patient_age": session_state.patient_age,
                     "patient_gender": session_state.patient_gender,
                     "language": session_state.language,
