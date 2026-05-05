@@ -552,6 +552,17 @@ gcloud config set project YOUR_PROJECT_ID
 
 # Enable required APIs (one time)
 gcloud services enable run.googleapis.com containerregistry.googleapis.com
+gcloud services enable artifactregistry.googleapis.com
+
+# Create a repository
+gcloud artifacts repositories create docjarvis \
+  --repository-format=docker \
+  --location=us-central1
+
+# Grant permission
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member="serviceAccount:docjarvis-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/artifactregistry.writer"
 
 # Build and push
 docker build -t gcr.io/YOUR_PROJECT_ID/docjarvis-backend:latest ./backend
