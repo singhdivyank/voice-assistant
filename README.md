@@ -21,6 +21,7 @@ DocJarvis is a multilingual, voice-first medical consultation assistant built on
 - [Monitoring & Observability](#monitoring--observability)
 - [CI/CD](#cicd)
 - [Configuration Reference](#configuration-reference)
+- [Deployment](#deployment-steps)
 
 ## Architecture Overview
 
@@ -513,3 +514,68 @@ All backend configuration is managed through `src/config/settings.py` (Pydantic 
 | `OTEL_ENABLED`           | `false`            | Enable OpenTelemetry export                       |
 | `OTEL_SERVICE_NAME`      | `""`               | OTel service name                                 |
 | `OTEL_EXPORTER_ENDPOINT` | `""`               | OTLP gRPC endpoint                                |
+
+## Deployment
+
+### Steps
+
+```bash
+# From repo root
+gcloud auth login
+
+gcloud iam service-accounts create docjarvis-deployer \
+  --display-name="DocJarvis CD Deployer"
+
+# Grant required roles
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member="serviceAccount:docjarvis-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/run.admin"
+
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member="serviceAccount:docjarvis-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/storage.admin"
+
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member="serviceAccount:docjarvis-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountUser"
+
+# Download key → paste contents as GCP_SA_KEY secret in GitHub
+gcloud iam service-accounts keys create sa-key.json \
+  --iam-account=docjarvis-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com
+
+cat sa-key.json  # copy this → GCP_SA_KEY GitHub secret
+rm sa-key.json   # never commit this
+
+gcloud auth configure-docker
+
+gcloud config set project YOUR_PROJECT_ID
+
+# Enable required APIs (one time)
+gcloud services enable run.googleapis.com containerregistry.googleapis.com
+
+# Build and push
+docker build -t gcr.io/YOUR_PROJECT_ID/docjarvis-backend:latest ./backend
+docker push gcr.io/YOUR_PROJECT_ID/docjarvis-backend:latest
+
+# Deploy
+gcloud run deploy docjarvis-backend \
+  --image gcr.io/YOUR_PROJECT_ID/docjarvis-backend:latest \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --memory 2Gi \
+  --cpu 2 \
+  --timeout 300 \
+  --concurrency 10 \
+  --max-instances 1 \
+  --port 8080 \
+  --set-env-vars "ENVIRONMENT=prod,GOOGLE_API_KEY=your_key,DOCTOR_EMAIL=doctor@example.com,CREWAI_TRACING_ENABLED=false,CREWAI_DISABLE_TELEMETRY=true" \
+  --set-env-vars "GMAIL_CREDENTIALS_B64=your_b64,GMAIL_TOKEN_B64=your_b64"
+
+gcloud run services describe docjarvis-backend \
+  --region us-central1 \
+  --format 'value(status.url)'
+
+VITE_API_URL_V1 = https://docjarvis-backend-xxxx-uc.a.run.app/api/v1 # copy this → VITE_API_URL_V1 GitHub secret
+VITE_API_URL_V2 = https://docjarvis-backend-xxxx-uc.a.run.app/api/v2 # copy this → VITE_API_URL_V2 GitHub secret
+```

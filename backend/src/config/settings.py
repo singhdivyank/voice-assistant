@@ -62,6 +62,8 @@ class Settings(BaseSettings):
 
     # CORS origins (fix: tell PydanticV2 this is class-level constant, not modified field)
     origins: ClassVar[List[str]] = [
+        "https://your-app.vercel.app",
+        "https://your-custom-domain.com",
         "https://localhost:3000",
         "http://localhost:3000",
         "https://127.0.0.1:3000",
@@ -82,6 +84,8 @@ class Settings(BaseSettings):
         "https://www.googleapis.com/auth/gmail.readonly",
     ]
     gmail_impersonated_user: str = "user@example.org"
+    gmail_credentials_b64: str = Field(default="", alias="GMAIL_CREDENTIALS_B64")
+    gmail_token_b64: str = Field(default="", alias="GMAIL_TOKEN_B64")
 
     def setup_dir(self) -> None:
         """Create necessary dictionaries"""

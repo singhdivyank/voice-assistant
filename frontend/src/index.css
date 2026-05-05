@@ -85,7 +85,7 @@ body {
     }
 
     .btn-success {
-        @apply bg-green-600 text-white hover:bg-green-700 focus:ring-green-500
+        @apply bg-green-600 text-white hover:bg-green-700 focus:ring-green-500;
     }
 
     .btn-danger {
