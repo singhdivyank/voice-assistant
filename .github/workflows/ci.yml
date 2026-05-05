@@ -17,27 +17,40 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
 
       - name: Install dependencies
+        working-directory: backend
         run: |
-          cd backend
-          pip install -r requirements.txt
+          pip install --upgrade pip
+          pip install --no-cache-dir .
           pip install pytest pytest-cov pytest-asyncio pylint httpx
 
       - name: Lint
-        run: |
-          pylint backend/src || true
+        working-directory: backend
+        run: pylint src || true
 
       - name: Set up Gmail credentials
         run: |
-          echo '${{ secrets.GMAIL_CREDENTIALS_JSON }}' > backend/credentials.json
-          echo '${{ secrets.GMAIL_TOKEN_JSON }}' > backend/token.json
+          if [ -n "${{ secrets.GMAIL_CREDENTIALS_JSON }}" ]; then
+            echo '${{ secrets.GMAIL_CREDENTIALS_JSON }}' > backend/credentials.json
+          fi
+          if [ -n "${{ secrets.GMAIL_TOKEN_B64 }}" ]; then
+            echo "${{ secrets.GMAIL_TOKEN_B64 }}" | base64 -d > backend/token.json
+          fi
 
       - name: Run tests with coverage
-        run: |
-          cd backend
-          pytest --cov=src --cov-report=xml
+        working-directory: backend
+        run: pytest --cov=src --cov-report=xml
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GMAIL_CREDENTIALS_B64: ${{ secrets.GMAIL_CREDENTIALS_B64 }}
+          GMAIL_TOKEN_B64: ${{ secrets.GMAIL_TOKEN_B64 }}
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
@@ -58,20 +71,18 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: |
-          cd frontend
-          npm ci
+        working-directory: frontend
+        run: npm ci
 
       - name: Lint & Typecheck
+        working-directory: frontend
         run: |
-          cd frontend
           npm run lint
           npm run typecheck
 
       - name: Build
-        run: |
-          cd frontend
-          npm run build
+        working-directory: frontend
+        run: npm run build
 
   docker-build:
     runs-on: ubuntu-latest

@@ -3,6 +3,7 @@
 import os
 import base64
 import logging
+import tempfile
 from email.mime.text import MIMEText
 from typing import Any, List, Dict
 
@@ -32,17 +33,26 @@ class GMailMCPClient:
         self.sender_email = settings.gmail_sender_email
         self.scopes = settings.gmail_scopes
         self.impersonated_user = settings.gmail_impersonated_user
+        self.credentials_b64 = settings.gmail_credentials_b64
+        self.tokens_b64 = settings.gmail_token_b64
 
     async def connect(self):
         """Authenticate with Gmail API."""
         try:
-            if self.connected:
-                return
 
             creds = None
 
-            if os.path.exists(self.token_file):
-                creds = Credentials.from_authorized_user_file(
+            if self.tokens_b64:
+                tokens_json = base64.b64decode(self.tokens_b64).decode()
+                with tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".json", delete=False
+                ) as f:
+                    f.write(tokens_json)
+                    tmp_token = f.name
+                creds = Credentials.from_authorised_user_file(tmp_token, self.scopes)
+                os.unlink(tmp_token)
+            elif os.path.exists(self.token_file):
+                creds = Credentials.from_authorised_user_file(
                     self.token_file, self.scopes
                 )
 
@@ -50,13 +60,27 @@ class GMailMCPClient:
                 if creds and creds.expired and creds.refresh_token:
                     creds.refresh(Request())
                 else:
-                    flow = InstalledAppFlow.from_client_secrets_file(
-                        self.credentials_file, self.scopes
-                    )
-                    creds = flow.run_local_server(port=0)
+                    if self.credentials_b64:
+                        creds_json = base64.b64decode(self.credentials_b64).decode()
+                        with tempfile.NamedTemporaryFile(
+                            mode="w", suffix=".json", delete=False
+                        ) as f:
+                            f.write(creds_json)
+                            tmp_creds = f.name
+                        flow = InstalledAppFlow.from_client_secrets_file(
+                            tmp_creds, self.scopes
+                        )
+                        os.unlink(tmp_creds)
+                    else:
+                        flow = InstalledAppFlow.from_client_secrets_file(
+                            self.credentials_file, self.scopes
+                        )
 
-                with open(self.token_file, "w") as token:
-                    token.write(creds.to_json())
+                    creds = flow.run_local_server(
+                        port=0, access_type="offline", prompt="consent"
+                    )
+                    with open(self.token_file, "w") as token:
+                        token.write(creds.to_json())
 
             self._service = build("gmail", "v1", credentials=creds)
             self.connected = True
