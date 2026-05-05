@@ -32,7 +32,7 @@ jobs:
               --platform linux/amd64 \
               -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/docjarvis-backend:${{ github.sha }} \
               -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/docjarvis-backend:latest \
-              -push \
+              --push \
               ./backend
 
       - name: Deploy to Google Cloud
