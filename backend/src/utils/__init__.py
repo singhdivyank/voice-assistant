@@ -39,7 +39,6 @@ from .file_handler import FileHandler
 from .helpers import (
     _extract_questions,
     _extract_transcription,
-    _extract_review,
     _extract_doctor_response,
     _extract_diagnosis,
     _extract_audio,
@@ -49,9 +48,7 @@ from .helpers import (
 )
 from .task_descriptions import (
     DIAGNOSIS_TASK_DESCRIPTION,
-    INTRO_TASK_DESCRIPTION,
     MEDICATION_TASK_DESCRIPTION,
-    PRESCRIPTION_TASK_DESCRIPTION,
     PROCESS_RESPONSE_TASK_DESCRIPTION,
     RECOMMENDATIONS_TASK_DESCRIPTION,
     STT_TASK_DESCRIPTION,
@@ -63,7 +60,6 @@ from .task_descriptions import (
 __all__ = [
     "_extract_questions",
     "_extract_transcription",
-    "_extract_review",
     "_extract_doctor_response",
     "_extract_diagnosis",
     "_extract_audio",
@@ -98,10 +94,8 @@ __all__ = [
     "ConfigurationError",
     "FileHandler",
     "DIAGNOSIS_TASK_DESCRIPTION",
-    "INTRO_TASK_DESCRIPTION",
     "MEDICATION_TASK_DESCRIPTION",
     "PRESCRIPTION_BACKSTORY",
-    "PRESCRIPTION_TASK_DESCRIPTION",
     "PROCESS_RESPONSE_TASK_DESCRIPTION",
     "RECOMMENDATION_BACKSTORY",
     "RECOMMENDATIONS_TASK_DESCRIPTION",

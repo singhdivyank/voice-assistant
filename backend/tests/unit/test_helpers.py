@@ -6,7 +6,6 @@ from src.utils.helpers import (
     _extract_diagnosis,
     _extract_doctor_response,
     _extract_questions,
-    _extract_review,
     _extract_transcription,
     _format_conversation,
     _format_qa_summary,
@@ -79,35 +78,6 @@ class TestExtractTranscription:
     def test_returns_none_when_no_transcription_marker(self):
         result = "Audio processed successfully"
         assert _extract_transcription(result) is None
-
-
-# _extract_review
-class TestExtractReview:
-    def test_parses_valid_json(self):
-        data = {
-            "review_id": "rev-001",
-            "doctor_email": "doc@hospital.com",
-            "estimated_time_minutes": 30,
-        }
-        result = f"Review info: {json.dumps(data)}"
-        review = _extract_review(result)
-        assert review["review_id"] == "rev-001"
-        assert review["doctor_email"] == "doc@hospital.com"
-        assert review["estimated_time"] == 30
-
-    def test_returns_defaults_on_empty(self):
-        review = _extract_review("")
-        assert review["review_id"] == "unknown"
-        assert "doctor_email" in review
-        assert "estimated_time" in review
-
-    def test_returns_defaults_on_invalid_json(self):
-        review = _extract_review("not json at all { broken")
-        assert review["review_id"] == "unknown"
-
-    def test_returns_defaults_on_none(self):
-        review = _extract_review(None)
-        assert review["review_id"] == "unknown"
 
 
 # _extract_doctor_response

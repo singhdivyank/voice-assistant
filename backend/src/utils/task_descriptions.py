@@ -1,14 +1,5 @@
 """Hardcode task description strings"""
 
-INTRO_TASK_DESCRIPTION = """
-Generate welcome audio message:
-Language: {language}
-Message: {welcome_message}
-                
-Use text_to_speech tool to create audio in the specified language.
-Return the audio in base64 format for immediate playback
-"""
-
 STT_TASK_DESCRIPTION = """
 Transcribe audio file to extract patient's initial symptom:
 Audio file path: {audio_file_path}
@@ -94,33 +85,6 @@ Use text_to_speech tool to generate patient-friendly audio with:
 3. Professional but reassuring tone
 
 Return audio in base64 format for immediate playback.
-"""
-
-PRESCRIPTION_TASK_DESCRIPTION = """
-Generate prescription and coordinate Gmail MCP review:
-                
-Session Information:
-- Session ID: {session_id}
-- Patient Age: {patient_age}
-- Patient Gender: {patient_gender}
-- Initial complaint: {initial_complaint}
-
-Urgency level: assign appropriate emergency level based on the complaint.
-
-Conversation Summary:
-{conversation_summary}
-
-Medication Recommendations:
-{recommendations}
-
-Process Requirements:
-1. Use generate_prescription tool to create properly formatted prescription document
-2. Use gmail_mcp_send tool to send prescription to appropriate doctor based on urgency
-3. Include structured review instructions for doctor response
-4. Set up tracking for review process
-
-CRITICAL: All prescriptions must be sent for human medical professional review via Gmail MCP.
-No prescription should be finalized without explicit doctor approval.
 """
 
 PROCESS_RESPONSE_TASK_DESCRIPTION = """

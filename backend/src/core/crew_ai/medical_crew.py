@@ -23,18 +23,15 @@ from src.utils.helpers import (
     _extract_questions,
     _extract_transcription,
     _extract_diagnosis,
-    _extract_review,
     _format_conversation,
     _format_qa_summary,
 )
 from src.utils.task_descriptions import (
     DIAGNOSIS_TASK_DESCRIPTION,
-    INTRO_TASK_DESCRIPTION,
     MEDICATION_TASK_DESCRIPTION,
     STT_TASK_DESCRIPTION,
     TRANSLATION_TASK_DESCRIPTION,
     TRANSLATION_DESCRIPTION,
-    PRESCRIPTION_TASK_DESCRIPTION,
     PROCESS_RESPONSE_TASK_DESCRIPTION,
     QUESTION_TASK_DESCRIPTION,
     RECOMMENDATIONS_TASK_DESCRIPTION,
@@ -309,84 +306,71 @@ class MedicalCrew:
                 f"Medication recommendation generation failed: {str(e)}"
             ) from e
 
-    # async def generate_recommendations_audio(
-    #     self, recommendations: str, language: str = "en"
-    # ) -> Dict[str, Any]:
-    #     """Step 8: convert recommendations to audio for patient"""
+    async def generate_recommendations_audio(
+        self, recommendations: str, language: str = "en"
+    ) -> Dict[str, Any]:
+        """Step 8: convert recommendations to audio for patient"""
 
-    #     try:
-    #         task = Task(
-    #             description=RECOMMENDATIONS_TASK_DESCRIPTION.format(
-    #                 lang=language,
-    #                 recommendations=recommendations,
-    #             ),
-    #             expected_output="High-quality audio file of spoken recommendations",
-    #             agent=self.agents["speech_processor"],
-    #         )
+        try:
+            task = Task(
+                description=RECOMMENDATIONS_TASK_DESCRIPTION.format(
+                    lang=language,
+                    recommendations=recommendations,
+                ),
+                expected_output="High-quality audio file of spoken recommendations",
+                agent=self.agents["speech_processor"],
+            )
 
-    #         crew = Crew(
-    #             agents=[self.agents["speech_processor"]], tasks=[task], verbose=True
-    #         )
-    #         result = crew.kickoff()
+            crew = Crew(
+                agents=[self.agents["speech_processor"]], tasks=[task], verbose=True
+            )
+            result = crew.kickoff()
 
-    #         audio_b64 = _extract_audio(str(result))
-    #         logger.info("Recommendations audio generated successfully")
-    #         return {
-    #             "status": "success",
-    #             "audio_base64": audio_b64,
-    #             "step": "audio_recommendations_generated",
-    #         }
-    #     except Exception as e:
-    #         logger.error("Failed to generate recommendations audio: %s", str(e))
-    #         raise DocJarvisError(f"Audio generation failed: {str(e)}") from e
+            audio_b64 = _extract_audio(str(result))
+            logger.info("Recommendations audio generated successfully")
+            return {
+                "status": "success",
+                "audio_base64": audio_b64,
+                "step": "audio_recommendations_generated",
+            }
+        except Exception as e:
+            logger.error("Failed to generate recommendations audio: %s", str(e))
+            raise DocJarvisError(f"Audio generation failed: {str(e)}") from e
 
     async def generate_and_review_prescriptions(
         self, session_state: SessionState, recommendations: str
     ) -> Dict[str, Any]:
-        """Steps 9-10: Generate prescription and send GMail MCP review"""
+        """Steps 9-10: Generate prescription and send for doctor review directly via MCP — no crew needed."""
 
         try:
-            conversation_summary = _format_conversation(
-                conversation=session_state.conversation
-            )
-            prescription_task = Task(
-                description=PRESCRIPTION_TASK_DESCRIPTION.format(
-                    session_id=session_state.session_id,
-                    patient_age=session_state.patient_age,
-                    patient_gender=session_state.patient_gender,
-                    initial_complaint=session_state.initial_complaint,
-                    conversation_summary=conversation_summary,
-                    recommendations=recommendations,
+            import uuid
+            from datetime import datetime
+
+            review_id = f"review_{uuid.uuid4().hex[:8]}"
+            prescription_data = {
+                "review_id": review_id,
+                "patient_age": session_state.patient_age,
+                "patient_gender": session_state.patient_gender,
+                "initial_complaint": session_state.initial_complaint,
+                "conversation_summary": _format_conversation(
+                    session_state.conversation
                 ),
-                expected_output="Prescription generated and sent for GMail MCP review \
-                    with tracking information",
-                agent=self.agents["prescription_agent"],
-            )
+                "recommendations": recommendations,
+                "generated_at": datetime.now().isoformat(),
+            }
 
-            crew = Crew(
-                agents=[self.agents["prescription_agent"]],
-                tasks=[prescription_task],
-                verbose=True,
-            )
-            result = crew.kickoff()
+            await self.mcp_manager.send_for_review(prescription_data)
 
-            review_info = _extract_review(str(result))
-            logger.info(
-                "Prescription sent for review:%d for session %d",
-                review_info.get("review_id"),
-                session_state.session_id,
-            )
-
+            logger.info("Prescription sent for review: %s", review_id)
             return {
                 "status": "success",
                 "prescription_generated": True,
                 "review_requested": True,
-                "review_id": review_info.get("review_id"),
-                "doctor_email": review_info.get("doctor_email"),
-                "estimated_review_time": review_info.get("estimated_time"),
+                "review_id": review_id,
+                "doctor_email": None,
+                "estimated_review_time": 30,
                 "step": "prescription_sent_for_review",
             }
-
         except Exception as e:
             logger.error("Failed to generate and review prescription: %s", str(e))
             raise DocJarvisError(

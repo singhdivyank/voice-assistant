@@ -75,32 +75,6 @@ def _extract_transcription(result: Optional[str] = None) -> Optional[str]:
     return None
 
 
-def _extract_review(result: Optional[str] = None) -> Dict[str, Any]:
-
-    default = {"review_id": "unknown", "doctor_email": "unkown", "estimated_time": 60}
-
-    if not result:
-        return default
-
-    start, end = result.find("{"), result.rfind("}")
-    if start == -1 or end == -1 or start > end:
-        return default
-
-    try:
-        data = json.loads(result[start : end + 1])
-    except json.JSONDecodeError:
-        return default
-
-    if not isinstance(data, dict):
-        return default
-
-    return {
-        "review_id": data.get("review_id", "unknown"),
-        "doctor_email": data.get("doctor_email", "unknown"),
-        "estimated_time": data.get("estimated_time_minutes", 60),
-    }
-
-
 def _extract_doctor_response(result: Optional[str] = None) -> Dict[str, Any]:
     default_response = {"action": "UNCLEAR"}
 

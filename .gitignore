@@ -79,3 +79,8 @@ frontend/localhost.pem
 frontend/localhost-key.pem
 *.pem
 *.key
+
+# Gmail OAuth
+backend/credentials.json
+backend/token.json
+*.json.token

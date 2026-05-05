@@ -21,7 +21,7 @@ class GMailMCPSendTool(BaseTool):
     description: str = "Send emails via Gmail MCP server for review"
     args_schema: type[BaseModel] = GmailSendInput
 
-    def _run(self, to: str, subject: str, body: str, review_id: str) -> str:
+    def _run(self, to_email: str, subject: str, body: str, review_id: str) -> str:
         """Send email via GMail MCP server"""
 
         try:
@@ -29,7 +29,7 @@ class GMailMCPSendTool(BaseTool):
                 run_async(gmail_client.connect())
 
             result = run_async(
-                gmail_client.send_email(to_email=to, subject=subject, body=body)
+                gmail_client.send_email(to_email=to_email, subject=subject, body=body)
             )
 
             is_success = result.get("success", False)
@@ -44,7 +44,7 @@ class GMailMCPSendTool(BaseTool):
                     "review_id": review_id,
                     "message_id": result.get("message_id"),
                     "timestamp": result.get("timestamp"),
-                    "recipient": to,
+                    "recipient": to_email,
                 }
             )
         except Exception as e:
