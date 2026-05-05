@@ -27,7 +27,7 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          dpcker buildx create --use
+          docker buildx create --use
           docker buildx build \
               --platform linux/amd64 \
               -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/docjarvis-backend:${{ github.sha }} \
