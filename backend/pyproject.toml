@@ -26,7 +26,6 @@ dependencies = [
     # Language & Audio Processing
     "SpeechRecognition==3.10.0",
     "gTTS==2.5.1",
-    "pydub==0.25.1",
     "langdetect==1.0.9",
     "deep-translator==1.11.4",
     "tiktoken==0.12.0",
