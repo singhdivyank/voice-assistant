@@ -10,35 +10,21 @@ jobs:
   deploy-backend:
     runs-on: ubuntu-latest
     if: ${{github.event.workflow_run.conclusion == 'success'}}
-
     steps:
       - uses: actions/checkout@v4
 
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{secrets.GCP_SA_KEY}}
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
-
-      - name: Build and push Docker image
-        run: |
-          docker buildx create --use
-          docker buildx build \
-              --platform linux/amd64 \
-              -t us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/docjarvis-backend:${{ github.sha }} \
-              -t us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/docjarvis-backend:latest \
-              --push \
-              ./backend
-
-      - name: Deploy to Google Cloud
+      - name: Deploy to Cloud Run
         run: |
           gcloud run deploy docjarvis-backend \
-              --image us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/docjarvis-backend:${{ github.sha }} \
+              --image us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/docjarvis/backend:${{ github.event.workflow_run.head_sha }} \
               --platform managed \
               --region us-central1 \
               --allow-unauthenticated \
@@ -47,6 +33,7 @@ jobs:
               --timeout 300 \
               --concurrency 10 \
               --max-instances 1 \
+              --startup-cpu-boost \
               --set-env-vars "ENVIRONMENT=prod" \
               --set-env-vars "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" \
               --set-env-vars "DOCTOR_EMAIL=${{ secrets.DOCTOR_EMAIL }}" \
