@@ -8,7 +8,6 @@ from .session_store import (
 )
 from .speech import (
     get_speech_service,
-    SpeechRecognizer,
     SpeechService,
     TextToSpeech,
 )
@@ -29,7 +28,6 @@ __all__ = [
     "InMemorySessionStore",
     "RedisSessionStore",
     "STORE",
-    "SpeechRecognizer",
     "SpeechService",
     "TextToSpeech",
     "TranslationService",

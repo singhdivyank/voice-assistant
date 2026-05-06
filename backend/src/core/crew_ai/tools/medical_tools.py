@@ -6,13 +6,12 @@ import json
 import re
 import uuid
 from datetime import datetime
-from pathlib import Path
 from typing import Optional
 
 from crewai.tools import BaseTool
 
 from src.config.settings import get_settings
-from src.services.speech import SpeechRecognizer, TextToSpeech
+from src.services.speech import TextToSpeech
 from src.services.translation import TranslationService
 from src.core.llm_manager import llm_manager
 from src.utils.consts import (
@@ -25,22 +24,6 @@ from src.utils.file_handler import FileHandler
 from src.utils.helpers import run_async
 
 settings = get_settings()
-
-
-class SpeechToTextTool(BaseTool):
-    name: str = "transcribe_audio"
-    description: str = "Convert audio files to text"
-
-    def _run(self, audio_file_path: str, language_code: str = "en") -> str:
-        """Transcribe audio file to text"""
-
-        try:
-            language = Language.from_code(language_code)
-            recognizer = SpeechRecognizer(language)
-            text = recognizer.transcribe_from_file(Path(audio_file_path))
-            return text
-        except Exception as e:
-            return f"Transcription failed: {str(e)}"
 
 
 class TextToSpeechTool(BaseTool):

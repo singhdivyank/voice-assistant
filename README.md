@@ -38,7 +38,7 @@ The V2 pipeline uses five **CrewAI agents**, each with a dedicated tool set and 
 
 | Agent                     | Role                                                      | Tools                                                      | Step(s) |
 | ------------------------- | --------------------------------------------------------- | ---------------------------------------------------------- | ------- |
-| `speech_processor`        | Transcribes audio and synthesises TTS responses           | `SpeechToTextTool`, `TextToSpeechTool`                     | 2, 8    |
+| `speech_processor`        | Transcribes audio and synthesises TTS responses           | `TextToSpeechTool`                                         | 2, 8    |
 | `translator`              | Translates between patient language and English           | `TranslationTool`                                          | 3, 4    |
 | `qna_generator`           | Generates exactly 3 focused diagnostic questions          | `QuestionGenerationTool`                                   | 4       |
 | `medication`              | Produces evidence-based medication recommendations        | `MedicationTool`                                           | 7       |

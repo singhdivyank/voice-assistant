@@ -1,5 +1,4 @@
 from .medical_tools import (
-    SpeechToTextTool,
     TextToSpeechTool,
     TranslationTool,
     QuestionGenerationTool,
@@ -8,7 +7,6 @@ from .medical_tools import (
 )
 
 __all__ = [
-    "SpeechToTextTool",
     "TextToSpeechTool",
     "TranslationTool",
     "QuestionGenerationTool",

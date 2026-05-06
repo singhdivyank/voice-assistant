@@ -7,7 +7,6 @@ from src.core.crew_ai.tools.medical_tools import (
     MedicationTool,
     PrescriptionTool,
     QuestionGenerationTool,
-    SpeechToTextTool,
     TextToSpeechTool,
     TranslationTool,
 )
@@ -31,9 +30,9 @@ gemini_llm = LLM(
 
 speech_processor = Agent(
     role="Speech Processing Specialist",
-    goal="Accurately convert speech to text and text to speech for medical consultations",
+    goal="Accurately convert text to speech for medical consultations",
     backstory=SPEECH_BACKSTORY,
-    tools=[SpeechToTextTool(), TextToSpeechTool()],
+    tools=[TextToSpeechTool()],
     llm=gemini_llm,
     verbose=True,
 )
