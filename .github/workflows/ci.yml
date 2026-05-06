@@ -107,7 +107,7 @@ jobs:
           docker buildx create --use
           docker buildx build \
             --platform linux/amd64 \
-            -t us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dockjarvis/backend:${{ github.sha }} \
-            -t us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dockjarvis/backend:latest \
+            -t us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/docjarvis/backend:${{ github.sha }} \
+            -t us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/docjarvis/backend:latest \
             --push \
             ./backend
