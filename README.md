@@ -517,76 +517,86 @@ All backend configuration is managed through `src/config/settings.py` (Pydantic 
 
 ## Deployment
 
-### Steps
+### Tech Stack
+
+| Layer                  | Technology                                              |
+| ---------------------- | ------------------------------------------------------- |
+| **Frontend**           | React 19, TypeScript, Vite, Zustand, Tailwind CSS       |
+| **Backend**            | FastAPI, Python 3.11, CrewAI, Gemini 2.5 Flash          |
+| **AI / LLM**           | Google Gemini via LangChain, CrewAI multi-agent         |
+| **Speech**             | Web Speech API (STT), Web Speech Synthesis + gTTS (TTS) |
+| **Email**              | Gmail API (OAuth 2.0) for prescription review           |
+| **Frontend Hosting**   | Vercel                                                  |
+| **Backend Hosting**    | Google Cloud Run                                        |
+| **Container Registry** | Google Artifact Registry                                |
+| **CI**                 | GitHub Actions                                          |
+| **CD**                 | GitHub Actions → Cloud Run + Vercel                     |
+
+### CI/CD Deployment Flow
+
+### Environment Variables
+
+| Variable                   | Description                             |
+| -------------------------- | --------------------------------------- |
+| `GOOGLE_API_KEY`           | Gemini API key                          |
+| `DOCTOR_EMAIL`             | Recipient email for prescription review |
+| `GMAIL_CREDENTIALS_B64`    | Base64-encoded `credentials.json`       |
+| `GMAIL_TOKEN_B64`          | Base64-encoded `token.json`             |
+| `ENVIRONMENT`              | `prod`                                  |
+| `CREWAI_TRACING_ENABLED`   | `false`                                 |
+| `CREWAI_DISABLE_TELEMETRY` | `true`                                  |
+| `VITE_API_URL_V1`          | `https://your-backend.run.app/api/v1`   |
+| `VITE_API_URL_V2`          | `https://your-backend.run.app/api/v2`   |
+
+### GitHUb Secrets Required
+
+```
+GCP_SA_KEY                 — GCP service account JSON key
+GCP_PROJECT_ID             — GCP project ID
+GOOGLE_API_KEY             — Gemini API key
+DOCTOR_EMAIL               — Doctor email for prescription review
+GMAIL_CREDENTIALS_B64      — base64 -i credentials.json | tr -d '\n'
+GMAIL_TOKEN_B64            — base64 -i token.json | tr -d '\n'
+VERCEL_TOKEN               — Vercel API token
+VITE_API_URL_V1            — Cloud Run backend URL /api/v1
+VITE_API_URL_V2            — Cloud Run backend URL /api/v2
+```
+
+## Manual First Deploy (one-time, before CD is active)
 
 ```bash
-# From repo root
+# 1. Authenticate
 gcloud auth login
-
-gcloud iam service-accounts create docjarvis-deployer \
-  --display-name="DocJarvis CD Deployer"
-
-# Grant required roles
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:docjarvis-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/run.admin"
-
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:docjarvis-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/storage.admin"
-
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:docjarvis-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/iam.serviceAccountUser"
-
-# Download key → paste contents as GCP_SA_KEY secret in GitHub
-gcloud iam service-accounts keys create sa-key.json \
-  --iam-account=docjarvis-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com
-
-cat sa-key.json  # copy this → GCP_SA_KEY GitHub secret
-rm sa-key.json   # never commit this
-
-gcloud auth configure-docker
-
 gcloud config set project YOUR_PROJECT_ID
 
-# Enable required APIs (one time)
-gcloud services enable run.googleapis.com containerregistry.googleapis.com
-gcloud services enable artifactregistry.googleapis.com
+# 2. Enable APIs
+gcloud services enable run.googleapis.com artifactregistry.googleapis.com
 
-# Create a repository
+# 3. Create Artifact Registry repository
 gcloud artifacts repositories create docjarvis \
   --repository-format=docker \
   --location=us-central1
 
-# Grant permission
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:docjarvis-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/artifactregistry.writer"
+# 4. Build and push
+gcloud auth configure-docker us-central1-docker.pkg.dev
+docker buildx build \
+  --platform linux/amd64 \
+  -t us-central1-docker.pkg.dev/YOUR_PROJECT_ID/docjarvis/backend:latest \
+  --push ./backend
 
-# Build and push
-docker build -t gcr.io/YOUR_PROJECT_ID/docjarvis-backend:latest ./backend
-docker push gcr.io/YOUR_PROJECT_ID/docjarvis-backend:latest
-
-# Deploy
+# 5. Deploy
 gcloud run deploy docjarvis-backend \
-  --image gcr.io/YOUR_PROJECT_ID/docjarvis-backend:latest \
+  --image us-central1-docker.pkg.dev/YOUR_PROJECT_ID/docjarvis/backend:latest \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
-  --memory 2Gi \
-  --cpu 2 \
-  --timeout 300 \
-  --concurrency 10 \
-  --max-instances 1 \
-  --port 8080 \
-  --set-env-vars "ENVIRONMENT=prod,GOOGLE_API_KEY=your_key,DOCTOR_EMAIL=doctor@example.com,CREWAI_TRACING_ENABLED=false,CREWAI_DISABLE_TELEMETRY=true" \
-  --set-env-vars "GMAIL_CREDENTIALS_B64=your_b64,GMAIL_TOKEN_B64=your_b64"
+  --memory 2Gi --cpu 2 --timeout 300 \
+  --port 8080 --startup-cpu-boost
 
+# 6. Get URL
 gcloud run services describe docjarvis-backend \
   --region us-central1 \
   --format 'value(status.url)'
-
-VITE_API_URL_V1 = https://docjarvis-backend-xxxx-uc.a.run.app/api/v1 # copy this → VITE_API_URL_V1 GitHub secret
-VITE_API_URL_V2 = https://docjarvis-backend-xxxx-uc.a.run.app/api/v2 # copy this → VITE_API_URL_V2 GitHub secret
 ```
+
+After this, all subsequent deploys happen automatically via the CD pipeline on every push to `main`.
