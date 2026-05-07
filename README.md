@@ -534,6 +534,8 @@ All backend configuration is managed through `src/config/settings.py` (Pydantic 
 
 ### CI/CD Deployment Flow
 
+![](./diagrams/deployment_flow.png)
+
 ### Environment Variables
 
 | Variable                   | Description                             |
